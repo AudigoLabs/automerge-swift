@@ -132,4 +132,22 @@ public final class RSBackend {
 
         return heads.map { $0.toHexString() }
     }
+
+    public func generateSyncMessage(syncStatePointer: OpaquePointer) -> [UInt8] {
+        let length = automerge_generate_sync_message(automerge, syncStatePointer)
+        var data = Array<UInt8>(repeating: 0, count: length)
+        automerge_read_binary(automerge, &data)
+        return data
+    }
+
+    public func receiveSyncMessage(syncStatePointer: OpaquePointer, data: [UInt8]) -> Patch? {
+        let length = automerge_receive_sync_message(automerge, syncStatePointer, data, UInt(data.count))
+        guard length > 0 else {
+            return nil
+        }
+        var buffer = Array<Int8>(repeating: 0, count: length)
+        automerge_read_json(automerge, &buffer)
+        let patchString = String(cString: buffer)
+        return try! decoder.decode(Patch.self, from: patchString.data(using: .utf8)!)
+    }
 }

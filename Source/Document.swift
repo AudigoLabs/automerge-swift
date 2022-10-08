@@ -247,6 +247,16 @@ public struct Document<T: Codable> {
         return backend.getChanges(heads: oldDocument.backend.getHeads())
     }
 
+    public func generateSyncMessage(syncState: SyncState) -> [UInt8] {
+        backend.generateSyncMessage(syncStatePointer: syncState.pointer)
+    }
+
+    public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) {
+        if let patch = writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data) {
+            applyPatch(patch: patch)
+        }
+    }
+
     /**
      * Adds a new change request to the list of pending requests, and returns an
      * updated document root object. `requestType` is a string indicating the type
