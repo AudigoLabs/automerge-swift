@@ -30,8 +30,7 @@ import PackageDescription
 let package = Package(
     name: "Automerge",
     platforms: [
-        .iOS(.v12),
-        .macOS(.v10_12)
+        .iOS(.v13),
     ],
     products: [
         .library(
@@ -40,7 +39,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(name: "AutomergeBackend", url: "https://github.com/AudigoLabs/automerge-swift-backend", from: "0.1.12"),
+        .package(name: "AutomergeBackend", url: "https://github.com/AudigoLabs/automerge-swift-backend", from: "0.1.14"),
         .package(name: "ZippyJSON", url: "https://github.com/michaeleisel/ZippyJSON", from: "1.2.4"),
     ],
     targets: [
