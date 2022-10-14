@@ -12,10 +12,10 @@ public extension Proxy {
     /// Adds a row you provide to the table model in your document.
     /// - Returns: The objectId of the added row.
     @discardableResult
-    func add<Row: Codable>(_ row: Row) -> ObjectId where Wrapped == Table<Row>  {
+    func add<Row: Codable>(_ row: Row, id: ObjectId? = nil) -> ObjectId where Wrapped == Table<Row>  {
         let row = try! objectEncoder.encode(row)
 
-        return context.addTableRow(path: path, row: row)
+        return context.addTableRow(path: path, row: row, id: id)
     }
     
     /// Provides a proxy to the row in your table model associated with the id you provide.

@@ -620,10 +620,10 @@ final class Context {
      * Updates the table object at path `path`, adding a new entry `row`.
      * Returns the objectId of the new row.
      */
-    func addTableRow(path: [KeyPathElement], row: Object) -> ObjectId {
+    func addTableRow(path: [KeyPathElement], row: Object, id: ObjectId? = nil) -> ObjectId {
         precondition(row.objectId == ObjectId("") || row.objectId == nil, "Cannot reuse an existing object as table row")
 
-        let id = ObjectId()
+        let id = id ?? ObjectId()
         let valuePatch = setValue(objectId: path[path.count - 1].objectId!, key: .string(id.objectId), value: row, insert: false, pred: [], elmId: nil)
 
         applyAt(path: path) { subpatch in
