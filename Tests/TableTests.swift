@@ -69,6 +69,40 @@ class TableTest: XCTestCase {
                         ]))
     }
 
+    // should generate ops to insert a row with a specified ID
+    func testTableFronted3() {
+        struct Scheme: Equatable, Codable {
+            struct Book: Equatable, Codable {
+                let authors: String
+                let title: String
+            }
+            var books: Table<Book>
+        }
+        let actor = Actor()
+        var doc = Document(Scheme(books: Table()), actor: actor)
+
+        let rowIdStr = "b9b916c1-3da7-4427-bd16-a918927c60ec"
+        let rowId = ObjectId(stringLiteral: rowIdStr)
+        let req = doc.change {
+            $0.books.add(.init(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications"), id: rowId)
+        }
+
+        let books = doc.rootProxy().books.objectId
+        let rowObjID = doc.rootProxy().books.row(by: rowId)?.objectId
+        XCTAssertEqual(req, Request(
+                        startOp: 2,
+                        deps: [],
+                        message: "",
+                        time: req!.time,
+                        actor: actor,
+                        seq: 2,
+                        ops: [
+                            Op(action: .makeMap, obj: books!, key: .string(rowIdStr), pred: []),
+                            Op(action: .set, obj: rowObjID!, key: "authors", value: "Kleppmann, Martin", pred: []),
+                            Op(action: .set, obj: rowObjID!, key: "title", value: "Designing Data-Intensive Applications", pred: []),
+                        ]))
+    }
+
     // should look up a row by ID
     func testTableWithOneRow1() {
         struct Scheme: Equatable, Codable {
