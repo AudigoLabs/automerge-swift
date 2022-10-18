@@ -13,9 +13,6 @@ public extension Proxy {
     /// - Returns: The objectId of the added row.
     @discardableResult
     func add<Row: Codable>(_ row: Row, id: ObjectId? = nil) -> ObjectId where Wrapped == Table<Row> {
-        if let id = id {
-            precondition(UUID(uuidString: id.objectId) != nil)
-        }
         let row = try! objectEncoder.encode(row)
 
         return context.addTableRow(path: path, row: row, id: id)
