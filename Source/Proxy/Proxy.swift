@@ -100,6 +100,10 @@ public final class Proxy<Wrapped> {
         return valueResolver()!
     }
 
+    public var hasChanges: Bool {
+        !context.ops.isEmpty
+    }
+
     private var map: Map {
         guard case .map(let map)? = objectId.map({ context.getObject(objectId: $0) }) else {
            fatalError("Must be map")

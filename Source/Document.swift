@@ -175,11 +175,11 @@ public struct Document<T: Codable> {
     /// ```
     ///
     @discardableResult
-    public mutating func change(message: String = "", _ execute: (Proxy<T>) -> Void) -> Request? {
+    public mutating func change(message: String = "", time: Date = Date(), _ execute: (Proxy<T>) -> Void) -> Request? {
         let context = Context(cache: cache, actorId: actor, maxOp: state.maxOp)
         execute(.rootProxy(context: context))
         if context.idUpdated {
-            return makeChange(context: context, message: message)
+            return makeChange(context: context, message: message, time: time)
         } else {
             return nil
         }
@@ -268,15 +268,16 @@ public struct Document<T: Codable> {
      */
     private mutating func makeChange(
         context: Context,
-        message: String
-    ) -> Request?
+        message: String,
+        time: Date
+    ) -> Request
     {
         state.seq += 1
         let request = Request(
             startOp: state.maxOp + 1,
             deps: state.deps,
             message: message,
-            time: Date(),
+            time: time,
             actor: actor,
             seq: state.seq,
             ops: context.ops
@@ -286,7 +287,6 @@ public struct Document<T: Codable> {
 
         applyPatchToDoc(patch: patch, fromBackend: true, context: context)
 
-        
         return request
     }
 
