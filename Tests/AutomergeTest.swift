@@ -437,6 +437,45 @@ class AutomergeTest: XCTestCase {
         XCTAssertEqual(s1.content.japaneseFood.count, 3)
     }
 
+    // should handle dictionaries
+    func testSerialUseDictionary() {
+        struct Scheme: Codable, Equatable {
+            var objects: [String: Object]
+            var num: Int
+            struct Object: Codable, Equatable {
+                var num: Int
+                var str: String
+            }
+        }
+        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10"), "b": .init(num: 20, str: "20")], num: 0))
+        s1.change {
+            $0.num.set(1)
+            $0.objects["a"].num.set(11)
+        }
+        var s2 = s1
+        s2.change {
+            $0.objects["b"].num.set(21)
+            $0.objects["c"].set(.init(num: 30, str: "30"))
+        }
+        var s3 = s2
+        s3.change {
+            $0.objects.removeValue(forKey: "a")
+        }
+        XCTAssertEqual(s1.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 20, str: "20")], num: 1))
+        XCTAssertEqual(s1.content.objects["a"]?.num, 11)
+        XCTAssertEqual(s1.content.objects["b"]?.num, 20)
+        XCTAssertEqual(s1.content.num, 1)
+        XCTAssertEqual(s2.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
+        XCTAssertEqual(s2.content.objects["a"]?.num, 11)
+        XCTAssertEqual(s2.content.objects["b"]?.num, 21)
+        XCTAssertEqual(s2.content.objects["c"]?.num, 30)
+        XCTAssertEqual(s2.content.num, 1)
+        XCTAssertEqual(s3.content, Scheme(objects: ["b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
+        XCTAssertEqual(s3.content.objects["b"]?.num, 21)
+        XCTAssertEqual(s3.content.objects["c"]?.num, 30)
+        XCTAssertEqual(s3.content.num, 1)
+    }
+
     // should handle nested objects
     func testSerialUseLists6() {
         struct Noodle: Codable, Equatable {
