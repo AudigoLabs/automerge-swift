@@ -15,6 +15,10 @@ public class SyncState {
         pointer = automerge_sync_state_init()
     }
 
+    public init(data: [UInt8]) {
+        pointer = automerge_decode_sync_state(data, UInt(data.count))
+    }
+
     deinit {
         automerge_sync_state_free(pointer)
     }

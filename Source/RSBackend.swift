@@ -150,4 +150,11 @@ public final class RSBackend {
         let patchString = String(cString: buffer)
         return try! decoder.decode(Patch.self, from: patchString.data(using: .utf8)!)
     }
+
+    public func encodeSyncState(syncStatePointer: OpaquePointer) -> [UInt8] {
+        let length = automerge_encode_sync_state(automerge, syncStatePointer)
+        var data = Array<UInt8>(repeating: 0, count: length)
+        automerge_read_binary(automerge, &data)
+        return data
+    }
 }

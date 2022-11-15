@@ -257,6 +257,10 @@ public struct Document<T: Codable> {
         }
     }
 
+    public func encodeSyncState(syncState: SyncState) -> [UInt8] {
+        backend.encodeSyncState(syncStatePointer: syncState.pointer)
+    }
+
     /**
      * Adds a new change request to the list of pending requests, and returns an
      * updated document root object. `requestType` is a string indicating the type
