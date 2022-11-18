@@ -108,6 +108,16 @@ public struct Document<T: Codable> {
         self.cache = [.root: .map(root)]
         self.state = State(seq: 0, maxOp: 0, deps: [], clock: [:])
     }
+
+    /// Creates a new empty document with a '0000' author and 0 timestamp to allow minimal initialization in a way which is conflict-free across clients.
+    /// Based on the suggestion here: https://github.com/automerge/automerge/issues/374
+    public init(conflictFreeInitialState initialState: T, actor: Actor = Actor()) {
+        var document = Document<T>(actor: Actor(stringLiteral: "0000"), backend: RSBackend())
+        document.change(message: "", time: Date(timeIntervalSince1970: 0.0)) { doc in
+            doc.set(initialState)
+        }
+        self = .init(data: document.save(), actor: actor)
+    }
     
     /// Creates a new document with the provided instance of a model.
     /// - Parameters:

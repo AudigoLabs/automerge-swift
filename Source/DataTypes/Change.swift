@@ -31,6 +31,7 @@ public struct Change: Codable {
         let length = automerge_decode_change(automerge, UInt(change.count), change)
         var buffer = Array<Int8>(repeating: 0, count: length)
         automerge_read_json(automerge, &buffer)
+        automerge_free(automerge)
         let newString = String(cString: buffer)
         self = try! JSONDecoder().decode(Change.self, from: newString.data(using: .utf8)!)
     }
