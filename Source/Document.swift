@@ -258,10 +258,12 @@ public struct Document<T: Codable> {
         backend.generateSyncMessage(syncStatePointer: syncState.pointer)
     }
 
-    public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) {
-        if let patch = writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data) {
+    public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) -> Patch? {
+        let patch = writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data)
+        if let patch = patch {
             applyPatch(patch: patch)
         }
+        return patch
     }
 
     public func encodeSyncState(syncState: SyncState) -> [UInt8] {
