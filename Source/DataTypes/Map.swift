@@ -40,6 +40,10 @@ struct Map: Equatable, Codable {
         self.objectId = ObjectId("")
         self.conflicts = [:]
     }
+
+    static func == (lhs: Map, rhs: Map) -> Bool {
+        return (lhs.objectId == "" || rhs.objectId == "" || lhs.objectId == rhs.objectId) && lhs.mapValues == rhs.mapValues
+    }
 }
 
 extension Map: Sequence {

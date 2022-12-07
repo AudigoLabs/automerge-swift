@@ -358,6 +358,38 @@ class AutomergeTest: XCTestCase {
         XCTAssertEqual(s1.content, Scheme(style: nil, title: "Hello"))
     }
 
+    // Should handle multiple identical updates
+    func testSerialUseNestedMaps9() {
+        struct Scheme: Codable, Equatable {
+            struct Style: Codable, Equatable {
+                let bold: Bool
+                let fontSize: Int
+                let typeface: String?
+            }
+            var style: Style?
+        }
+        var s1 = Document(Scheme(style: nil))
+        s1.change {
+            $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
+        }
+        s1.change {
+            $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
+        }
+        s1.change {
+            $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
+        }
+        XCTAssertEqual(s1.content, Scheme(style: .init(bold: true, fontSize: 14, typeface: "Optima")))
+        XCTAssertEqual(s1.content.style, .init(bold: true, fontSize: 14, typeface: "Optima"))
+        XCTAssertEqual(s1.content.style?.bold, true)
+        XCTAssertEqual(s1.content.style?.fontSize, 14)
+        XCTAssertEqual(s1.content.style?.typeface, "Optima")
+        XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style))
+        XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.bold))
+        XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.fontSize))
+        XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.typeface))
+        XCTAssertEqual(s1.allChanges().count, 1)
+    }
+
     // should allow elements to be inserted
     func testSerialUseLists1() {
         struct Scheme: Codable, Equatable {
@@ -435,45 +467,6 @@ class AutomergeTest: XCTestCase {
         XCTAssertEqual(s1.content.japaneseFood[1], "ramen")
         XCTAssertEqual(s1.content.japaneseFood[2], "そば")
         XCTAssertEqual(s1.content.japaneseFood.count, 3)
-    }
-
-    // should handle dictionaries
-    func testSerialUseDictionary() {
-        struct Scheme: Codable, Equatable {
-            var objects: [String: Object]
-            var num: Int
-            struct Object: Codable, Equatable {
-                var num: Int
-                var str: String
-            }
-        }
-        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10"), "b": .init(num: 20, str: "20")], num: 0))
-        s1.change {
-            $0.num.set(1)
-            $0.objects["a"].num.set(11)
-        }
-        var s2 = s1
-        s2.change {
-            $0.objects["b"].num.set(21)
-            $0.objects["c"].set(.init(num: 30, str: "30"))
-        }
-        var s3 = s2
-        s3.change {
-            $0.objects.removeValue(forKey: "a")
-        }
-        XCTAssertEqual(s1.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 20, str: "20")], num: 1))
-        XCTAssertEqual(s1.content.objects["a"]?.num, 11)
-        XCTAssertEqual(s1.content.objects["b"]?.num, 20)
-        XCTAssertEqual(s1.content.num, 1)
-        XCTAssertEqual(s2.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
-        XCTAssertEqual(s2.content.objects["a"]?.num, 11)
-        XCTAssertEqual(s2.content.objects["b"]?.num, 21)
-        XCTAssertEqual(s2.content.objects["c"]?.num, 30)
-        XCTAssertEqual(s2.content.num, 1)
-        XCTAssertEqual(s3.content, Scheme(objects: ["b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
-        XCTAssertEqual(s3.content.objects["b"]?.num, 21)
-        XCTAssertEqual(s3.content.objects["c"]?.num, 30)
-        XCTAssertEqual(s3.content.num, 1)
     }
 
     // should handle nested objects
@@ -560,6 +553,64 @@ class AutomergeTest: XCTestCase {
         }
         XCTAssertEqual(s1.content, Scheme(maze: [[[[[[[["noodles", "found"]]]]]]]]))
         XCTAssertEqual(s1.content.maze[0][0][0][0][0][0][0][1], "found")
+    }
+
+    // should handle dictionaries
+    func testSerialUseDictionary1() {
+        struct Scheme: Codable, Equatable {
+            var objects: [String: Object]
+            var num: Int
+            struct Object: Codable, Equatable {
+                var num: Int
+                var str: String
+            }
+        }
+        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10"), "b": .init(num: 20, str: "20")], num: 0))
+        s1.change {
+            $0.num.set(1)
+            $0.objects["a"].num.set(11)
+        }
+        var s2 = s1
+        s2.change {
+            $0.objects["b"].num.set(21)
+            $0.objects["c"].set(.init(num: 30, str: "30"))
+        }
+        var s3 = s2
+        s3.change {
+            $0.objects.removeValue(forKey: "a")
+        }
+        XCTAssertEqual(s1.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 20, str: "20")], num: 1))
+        XCTAssertEqual(s1.content.objects["a"]?.num, 11)
+        XCTAssertEqual(s1.content.objects["b"]?.num, 20)
+        XCTAssertEqual(s1.content.num, 1)
+        XCTAssertEqual(s2.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
+        XCTAssertEqual(s2.content.objects["a"]?.num, 11)
+        XCTAssertEqual(s2.content.objects["b"]?.num, 21)
+        XCTAssertEqual(s2.content.objects["c"]?.num, 30)
+        XCTAssertEqual(s2.content.num, 1)
+        XCTAssertEqual(s3.content, Scheme(objects: ["b": .init(num: 21, str: "20"), "c": .init(num: 30, str: "30")], num: 1))
+        XCTAssertEqual(s3.content.objects["b"]?.num, 21)
+        XCTAssertEqual(s3.content.objects["c"]?.num, 30)
+        XCTAssertEqual(s3.content.num, 1)
+    }
+
+    // should not register any conflicts or additional operations on repeated assignment
+    func testSerialUseDictionary2() {
+        struct Scheme: Codable, Equatable {
+            var objects: [String: Object]
+            struct Object: Codable, Equatable {
+                var num: Int
+                var str: String
+            }
+        }
+        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10")]))
+        for _ in 0..<3 {
+            s1.change {
+                $0.objects["a"].set(Scheme.Object(num: 11, str: "10"))
+            }
+            XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.objects))
+        }
+        XCTAssertEqual(s1.allChanges().count, 2)
     }
 
     func testSerialUseCounter1() {

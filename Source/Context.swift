@@ -366,8 +366,6 @@ final class Context {
                 let valuePatch = setValue(objectId: objectId, key: .string(key), value: value, insert: false, pred: pred, elmId: nil)
                 subpatch.props[key] = [opId: valuePatch]
             })
-        } else if map.conflicts[key]?.count ?? 0 > 1 {
-            fatalError()
         }
     }
 
