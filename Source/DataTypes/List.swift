@@ -35,6 +35,11 @@ struct List: Equatable, Codable {
         self.elemIds = []
     }
 
+    static func == (lhs: List, rhs: List) -> Bool {
+        guard lhs.listValues == rhs.listValues else { return false }
+        guard lhs.objectId != "" && rhs.objectId != "" else { return true }
+        return lhs.objectId == rhs.objectId && lhs.conflicts == rhs.conflicts && lhs.elemIds == rhs.elemIds
+    }
 }
 
 extension List: Collection, MutableCollection, RangeReplaceableCollection {

@@ -17,7 +17,7 @@ struct Map: Equatable, Codable {
     }
 
     let objectId: ObjectId
-    private var mapValues: [String: Object]
+    var mapValues: [String: Object]
     var conflicts: [String: [ObjectId: Object]]
 
     subscript(_ key: String) -> Object? {

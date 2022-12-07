@@ -601,12 +601,13 @@ class AutomergeTest: XCTestCase {
             struct Object: Codable, Equatable {
                 var num: Int
                 var str: String
+                var list: [String]
             }
         }
-        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10")]))
+        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10", list: ["x"])]))
         for _ in 0..<3 {
             s1.change {
-                $0.objects["a"].set(Scheme.Object(num: 11, str: "10"))
+                $0.objects["a"].set(Scheme.Object(num: 11, str: "10", list: ["y"]))
             }
             XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.objects))
         }
