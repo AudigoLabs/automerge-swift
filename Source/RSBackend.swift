@@ -109,7 +109,7 @@ public final class RSBackend {
     public func getHeads() throws -> [String] {
         var length = automerge_get_heads(automerge)
         var heads = [[UInt8]]()
-        while (length > 0) {
+        while length > 0 {
             var readLength = 32
             heads.append(try readBinary(mutableLength: &readLength))
             length = readLength
@@ -186,6 +186,9 @@ extension RSBackend {
         var length = api()
         guard length >= 0 else {
             throw backendError
+        }
+        if length == 0 {
+            return (data: [], length: 0)
         }
         let data = try readBinary(mutableLength: &length)
         return (data: data, length: length)
