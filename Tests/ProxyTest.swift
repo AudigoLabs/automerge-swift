@@ -15,10 +15,10 @@ class ProxyTest: XCTestCase {
     func testProxie1() {
         struct Scheme: Codable, Equatable {}
         // GIVEN
-        var document = Document(Scheme())
+        var document = try! Document(Scheme())
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             XCTAssertEqual(doc.objectId, .root)
         })
     }
@@ -29,10 +29,10 @@ class ProxyTest: XCTestCase {
             var key1: String?
         }
         // GIVEN
-        var document = Document(Scheme(key1: nil))
+        var document = try! Document(Scheme(key1: nil))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.key1?.set("value1")
             XCTAssertEqual(doc.key1?.get(), "value1")
         })
@@ -44,10 +44,10 @@ class ProxyTest: XCTestCase {
             var key1: String?
         }
         // GIVEN
-        var document = Document(Scheme(key1: nil))
+        var document = try! Document(Scheme(key1: nil))
 
         // WHEN
-        document.change { doc in
+        try! document.change { doc in
             XCTAssertNil(doc.key1.get())
         }
     }
@@ -57,10 +57,10 @@ class ProxyTest: XCTestCase {
             var key1: String?
         }
         // GIVEN
-        var document = Document(Scheme(key1: nil))
+        var document = try! Document(Scheme(key1: nil))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.toAny().key1.as(String.self).set("value1")
             XCTAssertEqual(doc.key1?.get(), "value1")
         })
@@ -71,10 +71,10 @@ class ProxyTest: XCTestCase {
             var key1: [String]
         }
         // GIVEN
-        var document = Document(Scheme(key1: ["2"]))
+        var document = try! Document(Scheme(key1: ["2"]))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.toAny().key1.as([String].self)[0].set("1")
             XCTAssertEqual(doc.key1.get(), ["1"])
         })
@@ -87,10 +87,10 @@ class ProxyTest: XCTestCase {
             var key1: [String]
         }
         // GIVEN
-        var document = Document(Scheme(key1: ["1"]))
+        var document = try! Document(Scheme(key1: ["1"]))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.toAny().key1.as([String].self).append(contentsOf: ["2", "3"])
             XCTAssertEqual(doc.key1.get(), ["1", "2", "3"])
         })
@@ -106,10 +106,10 @@ class ProxyTest: XCTestCase {
             }
             var deepObj: DeepObj?
         }
-        var document = Document(Scheme(deepObj: nil))
+        var document = try! Document(Scheme(deepObj: nil))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.deepObj?.set(.init(list: [1]))
             XCTAssertEqual(doc.deepObj?.get(), Scheme.DeepObj(list: [1]))
         })
@@ -123,10 +123,10 @@ class ProxyTest: XCTestCase {
             }
             var deepObj: DeepObj?
         }
-        var document = Document(Scheme(deepObj: nil))
+        var document = try! Document(Scheme(deepObj: nil))
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.deepObj?.set(.init(list: []))
             doc.deepObj?.list.set([1])
             XCTAssertEqual(doc.deepObj?.list.get(), [1])

@@ -17,11 +17,11 @@ class ProxyCollectionTest: XCTestCase {
             var list: [Int]
             var empty: [Int]
         }
-        var document = Document(Scheme(list: [], empty: []))
-        document.change { $0.list.set([1, 2, 3]) }
+        var document = try! Document(Scheme(list: [], empty: []))
+        try! document.change { $0.list.set([1, 2, 3]) }
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             XCTAssertEqual(doc.list.count, 3)
             XCTAssertEqual(doc.empty.count, 0)
         })
@@ -32,11 +32,11 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [Int]
         }
-        var document = Document(Scheme(list: []))
-        document.change { $0.list.set([1, 2, 3]) }
+        var document = try! Document(Scheme(list: []))
+        try! document.change { $0.list.set([1, 2, 3]) }
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             XCTAssertEqual(doc.list[0].get(), 1)
             XCTAssertEqual(doc.list[1].get(), 2)
             XCTAssertEqual(doc.list[2].get(), 3)
@@ -49,11 +49,11 @@ class ProxyCollectionTest: XCTestCase {
             var list: [Int]
             var empty: [Int]
         }
-        var document = Document(Scheme(list: [], empty: []))
-        document.change { $0.list.set([1, 2, 3]) }
+        var document = try! Document(Scheme(list: [], empty: []))
+        try! document.change { $0.list.set([1, 2, 3]) }
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             var copy = [Int]()
 
             for value in doc.list {
@@ -68,8 +68,8 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [Int]
         }
-        var document = Document(Scheme(list: []))
-        document.change({ doc in
+        var document = try! Document(Scheme(list: []))
+        try! document.change({ doc in
             doc.list.set([1, 2, 3])
 
             doc.list.replaceSubrange(1...1, with: [Int]())
@@ -84,7 +84,7 @@ class ProxyCollectionTest: XCTestCase {
         })
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             XCTAssertEqual(doc.list.get(), [1, 3])
             XCTAssertEqual(doc.list[0].get(), 1)
             XCTAssertEqual(doc.list[1].get(), 3)
@@ -97,13 +97,13 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [Int]
         }
-        var document = Document(Scheme(list: []))
-        document.change({ doc in
+        var document = try! Document(Scheme(list: []))
+        try! document.change({ doc in
             doc.list.set([1, 2, 3])
         })
 
         // WHEN
-        document.change({ doc in
+        try! document.change({ doc in
             doc.list.append(4)
             doc.list.append(contentsOf: [5, 6])
             XCTAssertEqual(doc.list.count, 6)
@@ -116,12 +116,12 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [Int]
         }
-        var document = Document(Scheme(list: []))
-        document.change({ doc in
+        var document = try! Document(Scheme(list: []))
+        try! document.change({ doc in
             doc.list.set([1, 2, 3])
         })
 
-        document.change({ doc in
+        try! document.change({ doc in
             doc.list[1].set(1)
             XCTAssertEqual(doc.list[1].get(), 1)
             XCTAssertEqual(doc.list.get(), [1, 1, 3])
@@ -133,12 +133,12 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [Int]
         }
-        var document = Document(Scheme(list: []))
-        document.change({ doc in
+        var document = try! Document(Scheme(list: []))
+        try! document.change({ doc in
             doc.list.set([1, 2, 3])
         })
 
-        document.change({ doc in
+        try! document.change({ doc in
             doc.list[1].set(1)
             XCTAssertEqual(doc.list.get(), [1, 1, 3])
             XCTAssertEqual(doc.list[1].get(), 1)
@@ -153,12 +153,12 @@ class ProxyCollectionTest: XCTestCase {
             }
             var deepObjList: [DeepObj]
         }
-        var document = Document(Scheme(deepObjList: []))
-        document.change({ doc in
+        var document = try! Document(Scheme(deepObjList: []))
+        try! document.change({ doc in
             doc.deepObjList.set([.init(list: [])])
         })
 
-        document.change({ doc in
+        try! document.change({ doc in
             doc.deepObjList.append(.init(list: [1]))
             XCTAssertEqual(doc.deepObjList[0].get(), .init(list: []))
             XCTAssertEqual(doc.deepObjList[1].get(), .init(list: [1]))
@@ -171,10 +171,10 @@ class ProxyCollectionTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var nested: [[Double]]
         }
-        var document = Document(Scheme(nested: [[0], [2]]))
+        var document = try! Document(Scheme(nested: [[0], [2]]))
 
         XCTAssertEqual(document.content, Scheme(nested: [[0], [2]]))
-        document.change({ doc in
+        try! document.change({ doc in
             let proxy: Proxy = doc.nested[0]
             proxy[0].set(1)
             XCTAssertEqual(proxy[0].get(), 1)

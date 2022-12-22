@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  RSBackend.swift
 //  
 //
 //  Created by Lukas Schmidt on 07.04.20.
@@ -20,8 +20,11 @@ public final class RSBackend {
         self.init(automerge: automerge_init())
     }
 
-    public convenience init(data: [UInt8]) {
-        self.init(automerge: automerge_load(UInt(data.count), data))
+    public convenience init(data: [UInt8]) throws {
+        guard let automerge = automerge_load(UInt(data.count), data) else {
+            throw AutomergeError.loadFailed
+        }
+        self.init(automerge: automerge)
     }
 
     deinit {
@@ -32,13 +35,9 @@ public final class RSBackend {
         return RSBackend(automerge: automerge_clone(automerge))
     }
 
-    public convenience init(changes: [[UInt8]]) {
-        let newAutomerge = automerge_init()
-        for change in changes {
-            automerge_write_change(newAutomerge, UInt(change.count), change)
-        }
-        automerge_load_changes(newAutomerge)
-        self.init(automerge: newAutomerge!)
+    public convenience init(changes: [[UInt8]]) throws {
+        self.init()
+        _ = try apply(changes: changes)
     }
 
     private init(automerge: OpaquePointer) {
@@ -56,105 +55,166 @@ public final class RSBackend {
         })
     }
 
-    public func save() -> [UInt8] {
+    public func save() throws -> [UInt8] {
         let length = automerge_save(automerge)
-        var data = Array<UInt8>(repeating: 0, count: length)
-        automerge_read_binary(automerge, &data)
-
-        return data
+        guard length >= 0 else {
+            throw backendError
+        }
+        return try readBinary(length: length)
     }
 
-    public func applyLocalChange(request: Request) -> Patch {
-        let data = try! encoder.encode(request)
+    public func applyLocalChange(request: Request) throws -> Patch {
+        let data = try encoder.encode(request)
         let string = String(data: data, encoding: .utf8)
-        let length = automerge_apply_local_change(automerge, string)
-        var buffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &buffer)
-        let patchString = String(cString: buffer)
-        let patch = try! decoder.decode(Patch.self, from: patchString.data(using: .utf8)!)
-
-        return patch
+        return try callJSONFunction(resultType: Patch.self) {
+            automerge_apply_local_change(automerge, string)
+        }
     }
 
-    public func apply(changes: [[UInt8]]) -> Patch {
+    public func apply(changes: [[UInt8]]) throws -> Patch {
         for change in changes {
             automerge_write_change(automerge, UInt(change.count), change)
         }
-        let length = automerge_apply_changes(automerge)
-        var buffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &buffer)
-        let newString = String(cString: buffer)
-        let patch = try! decoder.decode(Patch.self, from: newString.data(using: .utf8)!)
-
-        return patch
+        return try callJSONFunction(resultType: Patch.self) {
+            automerge_apply_changes(automerge)
+        }
     }
 
-    public func getPatch() -> Patch {
-        let length = automerge_get_patch(automerge)
-        var buffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &buffer)
-        let newString = String(cString: buffer)
-        let patch = try! decoder.decode(Patch.self, from: newString.data(using: .utf8)!)
-
-        return patch
+    public func getPatch() throws -> Patch {
+        try callJSONFunction(resultType: Patch.self) {
+            automerge_get_patch(automerge)
+        }
     }
 
-    public func getChanges(heads: [String] = []) -> [[UInt8]] {
+    public func getChanges(heads: [String] = []) throws -> [[UInt8]] {
         var changes = [[UInt8]]()
         var headsBuffer = Array<UInt8>(hex: heads.joined())
-        var length = automerge_get_changes(automerge, UInt(heads.count), &headsBuffer);
-        while (length > 0) {
-            var data = Array<UInt8>(repeating: 0, count: length)
-            length = automerge_read_binary(automerge, &data)
-            changes.append(data)
+        var length = automerge_get_changes(automerge, UInt(heads.count), &headsBuffer)
+        guard length >= 0 else {
+            throw backendError
         }
-
+        while length > 0 {
+            try changes.append(readBinary(mutableLength: &length))
+        }
         return changes
     }
 
-    public func getMissingDeps() -> [String] {
+    public func getMissingDeps() throws -> [String] {
         var buffer = [UInt8]()
-        let length = automerge_get_missing_deps(automerge, 0, &buffer)
-        var jsonBuffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &jsonBuffer)
-        let newString = String(cString: jsonBuffer)
-        return try! decoder.decode([String].self, from: newString.data(using: .utf8)!)
+        return try callJSONFunction(resultType: [String].self) {
+            automerge_get_missing_deps(automerge, 0, &buffer)
+        }
     }
 
-    public func getHeads() -> [String] {
+    public func getHeads() throws -> [String] {
         var length = automerge_get_heads(automerge)
         var heads = [[UInt8]]()
         while (length > 0) {
-            var data = Array<UInt8>(repeating: 0, count: 32)
-            length = automerge_read_binary(automerge, &data)
-            heads.append(data)
+            var readLength = 32
+            heads.append(try readBinary(mutableLength: &readLength))
+            length = readLength
         }
 
         return heads.map { $0.toHexString() }
     }
 
-    public func generateSyncMessage(syncStatePointer: OpaquePointer) -> [UInt8] {
-        let length = automerge_generate_sync_message(automerge, syncStatePointer)
-        var data = Array<UInt8>(repeating: 0, count: length)
-        automerge_read_binary(automerge, &data)
-        return data
+    public func generateSyncMessage(syncStatePointer: OpaquePointer) throws -> [UInt8] {
+        try callBinaryFunction({ automerge_generate_sync_message(automerge, syncStatePointer) }).data
     }
 
-    public func receiveSyncMessage(syncStatePointer: OpaquePointer, data: [UInt8]) -> Patch? {
-        let length = automerge_receive_sync_message(automerge, syncStatePointer, data, UInt(data.count))
+    public func receiveSyncMessage(syncStatePointer: OpaquePointer, data: [UInt8]) throws -> Patch? {
+        try callOptionalJSONFunction(resultType: Patch.self) {
+            automerge_receive_sync_message(automerge, syncStatePointer, data, UInt(data.count))
+        }
+    }
+
+    public func encodeSyncState(syncStatePointer: OpaquePointer) throws -> [UInt8] {
+        try callBinaryFunction({ automerge_encode_sync_state(automerge, syncStatePointer) }).data
+    }
+
+    func decodeSyncMessage(bytes: [UInt8]) throws -> SyncMessage {
+        try callJSONFunction(resultType: SyncMessage.self) {
+            automerge_decode_sync_message(automerge, bytes, UInt(bytes.count))
+        }
+    }
+
+    func decodeChange(bytes: [UInt8]) throws -> Change {
+        try callJSONFunction(resultType: Change.self) {
+            automerge_decode_change(automerge, UInt(bytes.count), bytes)
+        }
+    }
+
+}
+
+extension RSBackend {
+
+    private func callJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T {
+        let length = api()
+        guard length >= 0 else {
+            throw backendError
+        }
+        return try readJSON(resultType, length: length)
+    }
+
+    private func callOptionalJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T? {
+        let length = api()
+        guard length >= 0 else {
+            throw backendError
+        }
         guard length > 0 else {
             return nil
         }
-        var buffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &buffer)
-        let patchString = String(cString: buffer)
-        return try! decoder.decode(Patch.self, from: patchString.data(using: .utf8)!)
+        return try readJSON(resultType, length: length)
     }
 
-    public func encodeSyncState(syncStatePointer: OpaquePointer) -> [UInt8] {
-        let length = automerge_encode_sync_state(automerge, syncStatePointer)
-        var data = Array<UInt8>(repeating: 0, count: length)
-        automerge_read_binary(automerge, &data)
+    private func readJSON<T: Decodable>(_ type: T.Type, length: Int) throws -> T {
+        var buffer = Array<Int8>(repeating: 0, count: length)
+        guard automerge_read_json(automerge, &buffer) == 0 else {
+            throw backendError
+        }
+        guard let data = String(cString: buffer).data(using: .utf8) else {
+            throw AutomergeError.dataConversion
+        }
+        return try decoder.decode(type, from: data)
+    }
+
+}
+
+extension RSBackend {
+
+    private func callBinaryFunction(_ api: () -> Int) throws -> (data: [UInt8], length: Int) {
+        var length = api()
+        guard length >= 0 else {
+            throw backendError
+        }
+        let data = try readBinary(mutableLength: &length)
+        return (data: data, length: length)
+    }
+
+    private func readBinary(mutableLength: inout Int) throws -> [UInt8] {
+        var data = Array<UInt8>(repeating: 0, count: mutableLength)
+        mutableLength = automerge_read_binary(automerge, &data)
+        guard mutableLength >= 0 else {
+            throw backendError
+        }
         return data
+    }
+
+    private func readBinary(length: Int) throws -> [UInt8] {
+        var length = length
+        return try readBinary(mutableLength: &length)
+    }
+
+}
+
+extension RSBackend {
+
+    private var backendError: AutomergeError {
+        let errStr = automerge_error(automerge)
+        if let errStr = errStr {
+            return .backend(String(cString: errStr))
+        } else {
+            return .backend(nil)
+        }
     }
 }

@@ -15,8 +15,8 @@ class ProxyCounterTests: XCTestCase {
             var counter: Counter = 1
         }
         
-        var doc1 = Document(Schema())
-        let _ = doc1.change {
+        var doc1 = try! Document(Schema())
+        let _ = try! doc1.change {
             $0.counter += 1
             XCTAssertEqual($0.counter.get(), 2)
         }
@@ -29,13 +29,13 @@ class ProxyCounterTests: XCTestCase {
             var counter: Counter?
         }
         
-        var doc1 = Document(Schema())
-        let _ = doc1.change {
+        var doc1 = try! Document(Schema())
+        let _ = try! doc1.change {
             $0.counter?.set(3)
             XCTAssertEqual($0.counter?.get(), 3)
         }
         
-        let _ = doc1.change {
+        let _ = try! doc1.change {
             $0.counter += 2
             XCTAssertEqual($0.counter?.get(), 5)
         }
@@ -48,8 +48,8 @@ class ProxyCounterTests: XCTestCase {
             var counter: Counter = 1
         }
         
-        var doc1 = Document(Schema())
-        let _ = doc1.change {
+        var doc1 = try! Document(Schema())
+        let _ = try! doc1.change {
             $0.counter -= 1
             XCTAssertEqual($0.counter.get(), 0)
         }
@@ -62,13 +62,13 @@ class ProxyCounterTests: XCTestCase {
             var counter: Counter?
         }
         
-        var doc1 = Document(Schema())
-        let _ = doc1.change {
+        var doc1 = try! Document(Schema())
+        let _ = try! doc1.change {
             $0.counter?.set(3)
             XCTAssertEqual($0.counter?.get(), 3)
         }
         
-        let _ = doc1.change {
+        let _ = try! doc1.change {
             $0.counter -= 2
             XCTAssertEqual($0.counter?.get(), 1)
         }

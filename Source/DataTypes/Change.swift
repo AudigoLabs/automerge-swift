@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import AutomergeBackend
 
 /// A struct that represents a change to an Automerge document.
 public struct Change: Codable {
@@ -26,13 +25,7 @@ public struct Change: Codable {
     
     /// Creates a change from the byte-buffer you provide.
     /// - Parameter change: An array of bytes that represents the change to be decoded.
-    public init(change: [UInt8]) {
-        let automerge = automerge_init()
-        let length = automerge_decode_change(automerge, UInt(change.count), change)
-        var buffer = Array<Int8>(repeating: 0, count: length)
-        automerge_read_json(automerge, &buffer)
-        automerge_free(automerge)
-        let newString = String(cString: buffer)
-        self = try! JSONDecoder().decode(Change.self, from: newString.data(using: .utf8)!)
+    public init(change: [UInt8]) throws {
+        self = try RSBackend().decodeChange(bytes: change)
     }
 }

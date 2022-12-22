@@ -36,7 +36,7 @@ final class RSBackendTest: XCTestCase {
             ops: [
                 Op(action: .set, obj: .root, key: "bird", value: .string("magpie"), pred: [])
             ])
-        _ = backend.applyLocalChange(request: request)
+        _ = try! backend.applyLocalChange(request: request)
     }
 
 }

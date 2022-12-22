@@ -27,17 +27,15 @@ class DocumentTest: XCTestCase {
     // should allow instantiating from an existing object
     func testInitializing1() {
         let initialState = DocumentState(birds: .init(wrens: 3, magpies: 4))
-        let document = Document(initialState)
+        let document = try! Document(initialState)
         XCTAssertEqual(document.content, initialState)
     }
 
     // should return the unmodified document if nothing changed
     func testPerformingChanges1() {
         let initialState = DocumentState(birds: .init(wrens: 3, magpies: 4))
-        var document = Document(initialState)
-        document.change({ _ in
-
-        })
+        var document = try! Document(initialState)
+        try! document.change { _ in }
         XCTAssertEqual(document.content, initialState)
     }
 
@@ -47,8 +45,8 @@ class DocumentTest: XCTestCase {
             var bird: String?
         }
         let actor = Actor()
-        var doc = Document(Schema(bird: nil), actor: actor)
-        let req = doc.change { $0.bird.set("magpie") }
+        var doc = try! Document(Schema(bird: nil), actor: actor)
+        let req = try! doc.change { $0.bird.set("magpie") }
 
         XCTAssertEqual(doc.content, Schema(bird: "magpie"))
         XCTAssertEqual(req, Request(
@@ -69,8 +67,8 @@ class DocumentTest: XCTestCase {
             struct Birds: Codable, Equatable { let wrens: Int }
             var birds: Birds?
         }
-        var doc = Document(Schema(birds: nil))
-        let req = doc.change { $0.birds?.set(.init(wrens: 3)) }
+        var doc = try! Document(Schema(birds: nil))
+        let req = try! doc.change { $0.birds?.set(.init(wrens: 3)) }
         let birds = doc.rootProxy().birds!.objectId
         XCTAssertEqual(doc.content, Schema(birds: .init(wrens: 3)))
         XCTAssertEqual(req, Request(
@@ -93,10 +91,10 @@ class DocumentTest: XCTestCase {
             struct Birds: Codable, Equatable { let wrens: Int; var sparrows: Double? }
             var birds: Birds?
         }
-        var doc1 = Document(Schema(birds: nil))
-        doc1.change { $0.birds?.set(.init(wrens: 3, sparrows: nil)) }
+        var doc1 = try! Document(Schema(birds: nil))
+        try! doc1.change { $0.birds?.set(.init(wrens: 3, sparrows: nil)) }
         var doc2 = doc1
-        let req = doc2.change { $0.birds?.sparrows?.set(15) }
+        let req = try! doc2.change { $0.birds?.sparrows?.set(15) }
         let birds = doc2.rootProxy().birds?.objectId
 
         XCTAssertEqual(doc1.content, Schema(birds: .init(wrens: 3, sparrows: nil)))
@@ -120,9 +118,9 @@ class DocumentTest: XCTestCase {
             var magpies: Int?; let sparrows: Int?
         }
         let actor = Actor()
-        let doc1 = Document(Schema(magpies: 2, sparrows: 15), actor: actor)
+        let doc1 = try! Document(Schema(magpies: 2, sparrows: 15), actor: actor)
         var doc2 = doc1
-        let req = doc2.change { $0.magpies.set(nil) }
+        let req = try! doc2.change { $0.magpies.set(nil) }
         XCTAssertEqual(doc1.content, Schema(magpies: 2, sparrows: 15))
         XCTAssertEqual(doc2.content, Schema(magpies: nil, sparrows: 15))
         XCTAssertEqual(req, Request(
@@ -144,8 +142,8 @@ class DocumentTest: XCTestCase {
                 var birds: [String]?
             }
             let actor = Actor()
-            var doc1 = Document(Schema(birds: nil), actor: actor)
-            let req = doc1.change { $0.birds?.set(["chaffinch"])}
+            var doc1 = try! Document(Schema(birds: nil), actor: actor)
+            let req = try! doc1.change { $0.birds?.set(["chaffinch"])}
             XCTAssertEqual(doc1.content, Schema(birds: ["chaffinch"]))
             XCTAssertEqual(req, Request(
                             startOp: 1,
@@ -166,10 +164,10 @@ class DocumentTest: XCTestCase {
                 var birds: [String]?
             }
             let actor = Actor()
-            var doc1 = Document(Schema(birds: nil), actor: actor)
-            doc1.change { $0.birds?.set(["chaffinch"]) }
+            var doc1 = try! Document(Schema(birds: nil), actor: actor)
+            try! doc1.change { $0.birds?.set(["chaffinch"]) }
             var doc2 = doc1
-            let req = doc2.change { $0.birds?[0].set("greenfinch") }
+            let req = try! doc2.change { $0.birds?[0].set("greenfinch") }
             let birds = doc2.rootProxy().birds?.objectId
             XCTAssertEqual(doc1.content, Schema(birds: ["chaffinch"]))
             XCTAssertEqual(doc2.content, Schema(birds: ["greenfinch"]))
@@ -191,9 +189,9 @@ class DocumentTest: XCTestCase {
                 var birds: [String]
             }
             let actor = Actor()
-            let doc1 = Document(Schema(birds: ["chaffinch", "goldfinch"]), actor: actor)
+            let doc1 = try! Document(Schema(birds: ["chaffinch", "goldfinch"]), actor: actor)
             var doc2 = doc1
-            let req = doc2.change {
+            let req = try! doc2.change {
                 $0.birds.remove(at: 0)
             }
             let birds = doc2.rootProxy().birds.objectId
@@ -217,8 +215,8 @@ class DocumentTest: XCTestCase {
                 var now: Date?
             }
             let now = Date(timeIntervalSince1970: 126254)
-            var doc1 = Document(Schema(now: nil))
-            let req = doc1.change { $0.now?.set(now) }
+            var doc1 = try! Document(Schema(now: nil))
+            let req = try! doc1.change { $0.now?.set(now) }
             XCTAssertEqual(doc1.content, Schema(now: now))
             XCTAssertEqual(req, Request(
                             startOp: 1,
@@ -237,10 +235,10 @@ class DocumentTest: XCTestCase {
         struct Schema: Codable, Equatable {
             var wrens: Counter?
         }
-        var doc1 = Document(Schema())
-        let req1 = doc1.change { $0.wrens?.set(0) }
+        var doc1 = try! Document(Schema())
+        let req1 = try! doc1.change { $0.wrens?.set(0) }
         var doc2 = doc1
-        let req2 = doc2.change { $0.wrens?.increment() }
+        let req2 = try! doc2.change { $0.wrens?.increment() }
         let actor = doc2.actor
         XCTAssertEqual(doc1.content, Schema(wrens: 0))
         XCTAssertEqual(doc2.content, Schema(wrens: 1))
@@ -272,13 +270,13 @@ class DocumentTest: XCTestCase {
             var counts: [Counter]?
         }
 
-        var doc1 = Document(Schema())
-        let req1 = doc1.change {
+        var doc1 = try! Document(Schema())
+        let req1 = try! doc1.change {
             $0.counts?.set([1])
             XCTAssertEqual($0.counts?.get(), [1])
         }
         var doc2 = doc1
-        let req2 = doc2.change {
+        let req2 = try! doc2.change {
             $0.counts?[0].increment(2)
             XCTAssertEqual($0.counts?.get(), [3])
         }
@@ -323,7 +321,7 @@ class DocumentTest: XCTestCase {
 //                canUndo: false,
 //                canRedo: false,
 //                diffs: .init(ROOT_ID, type: .map, props: ["blackbirds": [local.actorId: 24]]))
-//            var doc1 = Document(Schema(blackbirds: nil, partridges: nil), options: .init(actorId: local))
+//            var doc1 = try! Document(Schema(blackbirds: nil, partridges: nil), options: .init(actorId: local))
 //            doc1.applyPatch(patch: patch1)
 //            doc1.change { $0[\.partridges, "partridges"] = 1 }
 //            let requests = doc1.state.requests.map { $0.request }

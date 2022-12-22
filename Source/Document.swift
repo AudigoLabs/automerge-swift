@@ -120,9 +120,9 @@ public struct Document<T: Codable> {
     /// - Parameters:
     ///   - initialState: The initial state of a collaborative model.
     ///   - actor: The identity of the collaborator that owns this document.
-    public init(_ initialState: T, actor: Actor = Actor()) {
+    public init(_ initialState: T, actor: Actor = Actor()) throws {
         var newDocument = Document<T>(actor: actor, backend: RSBackend())
-        newDocument.change(message: "Initialization", { doc in
+        try newDocument.change(message: "Initialization", { doc in
             doc.set(initialState)
         })
         self = newDocument
@@ -132,11 +132,11 @@ public struct Document<T: Codable> {
     /// - Parameters:
     ///   - data: A byte buffer of the encoded change history of the model.
     ///   - actor: The identity of the collaborator that owns this document.
-    public init(data: [UInt8], actor: Actor = Actor()) {
-        let backend = RSBackend(data: data)
+    public init(data: [UInt8], actor: Actor = Actor()) throws {
+        let backend = try RSBackend(data: data)
         var doc = Document<T>(actor: actor, backend: backend)
 
-        let patch = backend.getPatch()
+        let patch = try backend.getPatch()
         doc.applyPatch(patch: patch)
         self = doc
     }
@@ -145,9 +145,9 @@ public struct Document<T: Codable> {
     /// - Parameters:
     ///   - changes: A list of byte buffers that represent the changes to the model.
     ///   - actor: The identity of the collaborator that owns this document.
-    public init(changes: [[UInt8]], actor: Actor = Actor()) {
+    public init(changes: [[UInt8]], actor: Actor = Actor()) throws {
         let backend = RSBackend()
-        let patch = backend.apply(changes: changes)
+        let patch = try backend.apply(changes: changes)
         var doc = Document<T>(actor: actor, backend: backend)
 
         doc.applyPatch(patch: patch)
@@ -182,11 +182,11 @@ public struct Document<T: Codable> {
     /// ```
     ///
     @discardableResult
-    public mutating func change(message: String = "", time: Date = Date(), _ execute: (Proxy<T>) -> Void) -> Request? {
+    public mutating func change(message: String = "", time: Date = Date(), _ execute: (Proxy<T>) -> Void) throws -> Request? {
         let context = Context(cache: cache, actorId: actor, maxOp: state.maxOp)
         execute(.rootProxy(context: context))
         if context.idUpdated {
-            return makeChange(context: context, message: message, time: time)
+            return try makeChange(context: context, message: message, time: time)
         } else {
             return nil
         }
@@ -204,8 +204,8 @@ public struct Document<T: Codable> {
 
     /// Returns a byte buffer that represents the change history of the document
     /// - Returns: An encoded change history of the document.
-    public func save() -> [UInt8] {
-        return backend.save()
+    public func save() throws -> [UInt8] {
+        try backend.save()
     }
     
     /// Returns a proxy wrapper for the model document.
@@ -216,14 +216,14 @@ public struct Document<T: Codable> {
     
     /// Returns a list of byte buffers that represent the change history of the document.
     /// - Returns: A list of the changes to the document.
-    public func allChanges() -> [[UInt8]] {
-        return backend.getChanges()
+    public func allChanges() throws -> [[UInt8]] {
+        try backend.getChanges()
     }
     
     /// Updates the document by applying the provided list of changes
     /// - Parameter changes: A list of byte buffers that represent the changes to the document.
-    public mutating func apply(changes: [[UInt8]]) {
-        let patch = writableBackend().apply(changes: changes)
+    public mutating func apply(changes: [[UInt8]]) throws {
+        let patch = try writableBackend().apply(changes: changes)
         applyPatch(patch: patch)
     }
     
@@ -232,42 +232,42 @@ public struct Document<T: Codable> {
     ///
     /// This function requires that the current document the remote document provided have different actor IDs (that is, they originated from different calls to ``Document/init(_:actor:)``).
     /// It inspects the provided document for any changes that aren't in the current document, and applies them.
-    public mutating func merge(_ remoteDocument: Document<T>) {
+    public mutating func merge(_ remoteDocument: Document<T>) throws {
         precondition(actor != remoteDocument.actor, "Cannot merge an actor with itself")
-        apply(changes: remoteDocument.allChanges())
+        try apply(changes: try remoteDocument.allChanges())
     }
     
     /// Returns the list of missing dependencies.
-    public func getMissingsDeps() -> [String] {
-        return backend.getMissingDeps()
+    public func getMissingsDeps() throws -> [String] {
+        try backend.getMissingDeps()
     }
     
     /// Returns a list of the identifiers for changes in the document's history.
-    public func getHeads() -> [String] {
-        return backend.getHeads()
+    public func getHeads() throws -> [String] {
+        try backend.getHeads()
     }
     
     /// Returns a list of changes between the current document and the document provided.
     /// - Parameter oldDocument: A ``Document`` from a collaborator or an earlier saved version.
     /// - Returns: A list of changes between the two documents.
-    public func getChanges(between oldDocument: Document<T>) -> [[UInt8]] {
-        return backend.getChanges(heads: oldDocument.backend.getHeads())
+    public func getChanges(between oldDocument: Document<T>) throws -> [[UInt8]] {
+        try backend.getChanges(heads: oldDocument.backend.getHeads())
     }
 
-    public func generateSyncMessage(syncState: SyncState) -> [UInt8] {
-        backend.generateSyncMessage(syncStatePointer: syncState.pointer)
+    public func generateSyncMessage(syncState: SyncState) throws -> [UInt8] {
+        try backend.generateSyncMessage(syncStatePointer: syncState.pointer)
     }
 
-    public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) -> Patch? {
-        let patch = writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data)
+    public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) throws -> Patch? {
+        let patch = try writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data)
         if let patch = patch {
             applyPatch(patch: patch)
         }
         return patch
     }
 
-    public func encodeSyncState(syncState: SyncState) -> [UInt8] {
-        backend.encodeSyncState(syncStatePointer: syncState.pointer)
+    public func encodeSyncState(syncState: SyncState) throws -> [UInt8] {
+        try backend.encodeSyncState(syncStatePointer: syncState.pointer)
     }
 
     /**
@@ -279,12 +279,7 @@ public struct Document<T: Codable> {
      * particular, the `message` property of `options` is an optional human-readable
      * string describing the change.
      */
-    private mutating func makeChange(
-        context: Context,
-        message: String,
-        time: Date
-    ) -> Request
-    {
+    private mutating func makeChange(context: Context, message: String, time: Date) throws -> Request {
         state.seq += 1
         let request = Request(
             startOp: state.maxOp + 1,
@@ -295,11 +290,8 @@ public struct Document<T: Codable> {
             seq: state.seq,
             ops: context.ops
         )
-
-        let patch = writableBackend().applyLocalChange(request: request)
-
+        let patch = try writableBackend().applyLocalChange(request: request)
         applyPatchToDoc(patch: patch, fromBackend: true, context: context)
-
         return request
     }
 
@@ -307,7 +299,6 @@ public struct Document<T: Codable> {
         if !isKnownUniquelyReferenced(&self.backend) {
             backend = backend.clone()
         }
-
         return backend
     }
 

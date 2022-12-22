@@ -15,7 +15,7 @@ class AutomergeTest: XCTestCase {
     // should initially be an empty map
     func testInit1() {
         struct Scheme: Codable, Equatable {}
-        let document = Document(Scheme())
+        let document = try! Document(Scheme())
         XCTAssertEqual(document.content, Scheme())
     }
 
@@ -28,7 +28,7 @@ class AutomergeTest: XCTestCase {
             let birds: Birds
         }
         let initialState = Scheme(birds: .init(wrens: 3, magpies: 4))
-        let document = Document(initialState)
+        let document = try! Document(initialState)
         XCTAssertEqual(document.content, initialState)
     }
 
@@ -36,23 +36,23 @@ class AutomergeTest: XCTestCase {
     func testInit4() {
         struct Scheme: Codable, Equatable {}
         let actor = Actor()
-        let document = Document(Scheme(), actor: actor)
+        let document = try! Document(Scheme(), actor: actor)
         XCTAssertEqual(document.actor, actor)
     }
 
 //    // should not enable undo after init
 //    func testInit5() {
 //        struct Scheme: Codable, Equatable {}
-//        let document = Document(Scheme())
+//        let document = try! Document(Scheme())
 //        XCTAssertFalse(document.canUndo)
 //    }
 
     // should not mutate objects
     func testSerialUse1() {
         struct Scheme: Codable, Equatable { var foo: String?}
-        let s1 = Document(Scheme(foo: nil))
+        let s1 = try! Document(Scheme(foo: nil))
         var s2 = s1
-        s2.change { $0.foo?.set("bar") }
+        try! s2.change { $0.foo?.set("bar") }
         XCTAssertEqual(s1.content.foo, nil)
         XCTAssertEqual(s2.content.foo, "bar")
     }
@@ -60,21 +60,21 @@ class AutomergeTest: XCTestCase {
     // should not register any conflicts on repeated assignment
     func testSerialUse2() {
         struct Scheme: Codable, Equatable { var foo: String?}
-        var s1 = Document(Scheme(foo: nil))
-        s1.change { $0.foo?.set("bar") }
+        var s1 = try! Document(Scheme(foo: nil))
+        try! s1.change { $0.foo?.set("bar") }
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.foo))
-        s1.change { $0.foo?.set("bar") }
+        try! s1.change { $0.foo?.set("bar") }
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.foo))
-        s1.change { $0.foo?.set("bar") }
+        try! s1.change { $0.foo?.set("bar") }
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.foo))
     }
 
     // should group several changes
     func testSerialUseChanges1() {
         struct Scheme: Codable, Equatable { let first: String?; let second: String? }
-        let s1 = Document(Scheme(first: nil, second: nil))
+        let s1 = try! Document(Scheme(first: nil, second: nil))
         var s2 = s1
-        s2.change { doc in
+        try! s2.change { doc in
             doc.first.set("one")
             XCTAssertEqual(doc.first.get(), "one")
             doc.second.set("two")
@@ -88,9 +88,9 @@ class AutomergeTest: XCTestCase {
     // should allow repeated reading and writing of values
     func testSerialUseChanges2() {
         struct Scheme: Codable, Equatable { var value: String? }
-        let s1 = Document(Scheme(value: nil))
+        let s1 = try! Document(Scheme(value: nil))
         var s2 = s1
-        s2.change { doc in
+        try! s2.change { doc in
             doc.value.set("a")
             XCTAssertEqual(doc.value.get(), "a")
             doc.value.set("b")
@@ -105,9 +105,9 @@ class AutomergeTest: XCTestCase {
     // should not record conflicts when writing the same field several times within one change
     func testSerialUseChanges3() {
         struct Scheme: Codable, Equatable { var value: String? }
-        let s1 = Document(Scheme(value: nil))
+        let s1 = try! Document(Scheme(value: nil))
         var s2 = s1
-        s2.change { doc in
+        try! s2.change { doc in
             doc.value.set("a")
             doc.value.set("b")
             doc.value.set("c")
@@ -120,8 +120,8 @@ class AutomergeTest: XCTestCase {
     // should return the unchanged state object if nothing changed
     func testSerialUseChanges4() {
         struct Scheme: Codable, Equatable { var value: String? }
-        var s1 = Document(Scheme(value: nil))
-        s1.change { _ in }
+        var s1 = try! Document(Scheme(value: nil))
+        try! s1.change { _ in }
         XCTAssertEqual(s1.content, Scheme(value: nil))
     }
 
@@ -130,10 +130,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable { var now: Date }
         let now = Date(timeIntervalSince1970: 0)
         let now2 = Date(timeIntervalSince1970: 2)
-        var s1 = Document(Scheme(now: now))
-        s1.change { $0.now.set(now2) }
+        var s1 = try! Document(Scheme(now: now))
+        try! s1.change { $0.now.set(now2) }
 
-        let s2 = Document<Scheme>(changes: s1.allChanges())
+        let s2 = try! Document<Scheme>(changes: s1.allChanges())
         XCTAssertEqual(s2.content.now, now2)
     }
 
@@ -142,10 +142,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable { var url: URL? }
         let url = URL(string: "automerge.com")
         let url2 = URL(string: "automerge.com/test")
-        var s1 = Document(Scheme(url: url))
-        s1.change { $0.url.set(url2) }
+        var s1 = try! Document(Scheme(url: url))
+        try! s1.change { $0.url.set(url2) }
 
-        let s2 = Document<Scheme>(changes: s1.allChanges())
+        let s2 = try! Document<Scheme>(changes: s1.allChanges())
         XCTAssertEqual(s2.content.url, url2)
     }
 
@@ -154,10 +154,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable { var list: [Date] }
         let now = Date(timeIntervalSince1970: 0)
         let now2 = Date(timeIntervalSince1970: 2)
-        var s1 = Document(Scheme(list: [now]))
-        s1.change { $0.list.set([now2]) }
+        var s1 = try! Document(Scheme(list: [now]))
+        try! s1.change { $0.list.set([now2]) }
 
-        let s2 = Document<Scheme>(changes: s1.allChanges())
+        let s2 = try! Document<Scheme>(changes: s1.allChanges())
         XCTAssertEqual(s2.content.list, [now2])
     }
 
@@ -166,19 +166,19 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable { var list: [URL?]? }
         let url = URL(string: "automerge.com")
         let url2 = URL(string: "automerge.com/test")
-        var s1 = Document(Scheme(list: [url]))
-        s1.change { $0.list.set([url2]) }
+        var s1 = try! Document(Scheme(list: [url]))
+        try! s1.change { $0.list.set([url2]) }
 
-        let s2 = Document<Scheme>(changes: s1.allChanges())
+        let s2 = try! Document<Scheme>(changes: s1.allChanges())
         XCTAssertEqual(s2.content.list, [url2])
     }
 
     // should handle single-property assignment
     func testSerialUseRootObject1() {
         struct Scheme: Codable, Equatable { var foo: String?; var zip: String? }
-        var s1 = Document(Scheme(foo: nil, zip: nil))
-        s1.change { $0.foo.set("bar") }
-        s1.change { $0.zip.set("zap") }
+        var s1 = try! Document(Scheme(foo: nil, zip: nil))
+        try! s1.change { $0.foo.set("bar") }
+        try! s1.change { $0.zip.set("zap") }
 
         XCTAssertEqual(s1.content.foo, "bar")
         XCTAssertEqual(s1.content.zip, "zap")
@@ -187,8 +187,8 @@ class AutomergeTest: XCTestCase {
     // should allow floating-point values
     func testSerialUseRootObject2() {
         struct Scheme: Codable, Equatable { var number: Double?; }
-        var s1 = Document(Scheme(number: nil))
-        s1.change { $0.number.set(1589032171.1) }
+        var s1 = try! Document(Scheme(number: nil))
+        try! s1.change { $0.number.set(1589032171.1) }
 
         XCTAssertEqual(s1.content.number, 1589032171.1)
     }
@@ -196,8 +196,8 @@ class AutomergeTest: XCTestCase {
     // should handle multi-property assignment
     func testSerialUseRootObject3() {
         struct Scheme: Codable, Equatable { var foo: String?; var zip: String? }
-        var s1 = Document(Scheme(foo: nil, zip: nil))
-        s1.change(message: "multi-assign") {
+        var s1 = try! Document(Scheme(foo: nil, zip: nil))
+        try! s1.change(message: "multi-assign") {
             $0.foo.set("bar")
             $0.zip.set("zap")
         }
@@ -210,12 +210,12 @@ class AutomergeTest: XCTestCase {
     // should handle root property deletion
     func testSerialUseRootObject4() {
         struct Scheme: Codable, Equatable { var foo: String?; var zip: String? }
-        var s1 = Document(Scheme(foo: nil, zip: nil))
-        s1.change(message: "set foo", {
+        var s1 = try! Document(Scheme(foo: nil, zip: nil))
+        try! s1.change(message: "set foo", {
             $0.foo.set("bar")
             $0.zip.set(nil)
         })
-         s1.change(message: "del foo", {
+         try! s1.change(message: "del foo", {
             $0.foo.set(nil)
         })
 
@@ -230,8 +230,8 @@ class AutomergeTest: XCTestCase {
             struct Nested: Codable, Equatable {}
             var nested: Nested?
         }
-        var s1 = Document(Scheme(nested: nil))
-        s1.change { $0.nested.set(.init()) }
+        var s1 = try! Document(Scheme(nested: nil))
+        try! s1.change { $0.nested.set(.init()) }
         XCTAssertNotEqual(s1.rootProxy().nested?.objectId, "00000000-0000-0000-0000-000000000000")
         XCTAssertEqual(s1.content, Scheme(nested: .init()))
     }
@@ -242,12 +242,12 @@ class AutomergeTest: XCTestCase {
             struct Nested: Codable, Equatable { var foo: String?; var one: Int? }
             var nested: Nested?
         }
-        var s1 = Document(Scheme(nested: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(nested: nil))
+        try! s1.change {
             $0.nested.set(.init(foo: nil, one: nil))
             $0.nested?.foo.set("bar")
         }
-        s1.change {
+        try! s1.change {
             $0.nested?.one?.set(1)
         }
         XCTAssertEqual(s1.content, Scheme(nested: .init(foo: "bar", one: 1)))
@@ -262,8 +262,8 @@ class AutomergeTest: XCTestCase {
             struct Style: Codable, Equatable { let bold: Bool; let fontSize: Int }
             var style: Style?
         }
-        var s1 = Document(Scheme(style: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(style: nil))
+        try! s1.change {
             $0.style?.set(.init(bold: false, fontSize: 12))
         }
         XCTAssertEqual(s1.content, Scheme(style: .init(bold: false, fontSize: 12)))
@@ -278,8 +278,8 @@ class AutomergeTest: XCTestCase {
             struct Style: Codable, Equatable { let bold: Bool; let fontSize: Int; let typeface: String? }
             var style: Style?
         }
-        var s1 = Document(Scheme(style: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(style: nil))
+        try! s1.change {
             $0.style?.set(.init(bold: false, fontSize: 12, typeface: nil))
             $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
         }
@@ -301,8 +301,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var a: A
         }
-        var s1 = Document(Scheme(a: A(b: B(c: C(d: D(e: E(f: F(g: "h", i: nil))))))))
-        s1.change {
+        var s1 = try! Document(Scheme(a: A(b: B(c: C(d: D(e: E(f: F(g: "h", i: nil))))))))
+        try! s1.change {
             $0.a.b.c.d.e.f.i?.set("j")
         }
         XCTAssertEqual(s1.content, Scheme(a: A(b: B(c: C(d: D(e: E(f: F(g: "h", i: "j"))))))))
@@ -316,12 +316,12 @@ class AutomergeTest: XCTestCase {
             struct Pet: Codable, Equatable { let species: String; let legs: Int?; let breed: String?; let colors: [String: Bool]?; let variety: String? }
             var myPet: Pet?
         }
-        var s1 = Document(Scheme(myPet: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(myPet: nil))
+        try! s1.change {
             $0.myPet?.set(.init(species: "dog", legs: 4, breed: "dachshund", colors: nil, variety: nil))
         }
         var s2 = s1
-        s2.change {
+        try! s2.change {
             $0.myPet?.set(.init(species: "koi", legs: nil, breed: nil, colors: ["red": true, "white": true, "black": false], variety: "紅白"))
         }
         XCTAssertEqual(s1.content, Scheme(myPet: .init(species: "dog", legs: 4, breed: "dachshund", colors: nil, variety: nil)))
@@ -337,9 +337,9 @@ class AutomergeTest: XCTestCase {
             struct Style: Codable, Equatable { var bold: Bool?; let fontSize: Int; let typeface: String? }
             var style: Style?
         }
-        var s1 = Document(Scheme(style: nil))
-        s1.change { $0.style?.set(.init(bold: false, fontSize: 12, typeface: "Optima")) }
-        s1.change { $0.style?.bold.set(nil) }
+        var s1 = try! Document(Scheme(style: nil))
+        try! s1.change { $0.style?.set(.init(bold: false, fontSize: 12, typeface: "Optima")) }
+        try! s1.change { $0.style?.bold.set(nil) }
         XCTAssertEqual(s1.content.style, .init(bold: nil, fontSize: 12, typeface: "Optima"))
         XCTAssertEqual(s1.content.style?.bold, nil)
     }
@@ -351,9 +351,9 @@ class AutomergeTest: XCTestCase {
             var style: Style?
             let title: String
         }
-        var s1 = Document(Scheme(style: nil, title: "Hello"))
-        s1.change { $0.style?.set(.init(bold: false, fontSize: 12, typeface: "Optima")) }
-        s1.change { $0.style.set(nil) }
+        var s1 = try! Document(Scheme(style: nil, title: "Hello"))
+        try! s1.change { $0.style?.set(.init(bold: false, fontSize: 12, typeface: "Optima")) }
+        try! s1.change { $0.style.set(nil) }
         XCTAssertEqual(s1.content.style, nil)
         XCTAssertEqual(s1.content, Scheme(style: nil, title: "Hello"))
     }
@@ -368,14 +368,14 @@ class AutomergeTest: XCTestCase {
             }
             var style: Style?
         }
-        var s1 = Document(Scheme(style: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(style: nil))
+        try! s1.change {
             $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
         }
-        s1.change {
+        try! s1.change {
             $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
         }
-        s1.change {
+        try! s1.change {
             $0.style?.set(.init(bold: true, fontSize: 14, typeface: "Optima"))
         }
         XCTAssertEqual(s1.content, Scheme(style: .init(bold: true, fontSize: 14, typeface: "Optima")))
@@ -387,7 +387,7 @@ class AutomergeTest: XCTestCase {
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.bold))
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.fontSize))
         XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.style?.typeface))
-        XCTAssertEqual(s1.allChanges().count, 1)
+        XCTAssertEqual(try! s1.allChanges().count, 1)
     }
 
     // should allow elements to be inserted
@@ -395,9 +395,9 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var noodles: [String]
         }
-        var s1 = Document(Scheme(noodles: []))
-        s1.change { $0.noodles.insert(contentsOf: ["udon", "soba"], at: 0) }
-        s1.change { $0.noodles.insert("ramen", at: 1) }
+        var s1 = try! Document(Scheme(noodles: []))
+        try! s1.change { $0.noodles.insert(contentsOf: ["udon", "soba"], at: 0) }
+        try! s1.change { $0.noodles.insert("ramen", at: 1) }
         XCTAssertEqual(s1.content.noodles, ["udon", "ramen", "soba"])
         XCTAssertEqual(s1.content.noodles[0], "udon")
         XCTAssertEqual(s1.content.noodles[1], "ramen")
@@ -410,8 +410,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var noodles: [String]
         }
-        var s1 = Document(Scheme(noodles: []))
-        s1.change { $0.noodles.set(["udon", "ramen", "soba"]) }
+        var s1 = try! Document(Scheme(noodles: []))
+        try! s1.change { $0.noodles.set(["udon", "ramen", "soba"]) }
         XCTAssertEqual(s1.content, Scheme(noodles: ["udon", "ramen", "soba"]))
         XCTAssertEqual(s1.content.noodles, ["udon", "ramen", "soba"])
         XCTAssertEqual(s1.content.noodles[0], "udon")
@@ -425,8 +425,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var noodles: [String]
         }
-        var s1 = Document(Scheme(noodles:["udon", "ramen", "soba"]))
-        s1.change {
+        var s1 = try! Document(Scheme(noodles:["udon", "ramen", "soba"]))
+        try! s1.change {
             $0.noodles.remove(at: 1)
         }
         XCTAssertEqual(s1.content, Scheme(noodles: ["udon", "soba"]))
@@ -441,8 +441,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var japaneseFood: [String]
         }
-        var s1 = Document(Scheme(japaneseFood: ["udon", "ramen", "soba"]))
-        s1.change { $0.japaneseFood[1].set("sushi") }
+        var s1 = try! Document(Scheme(japaneseFood: ["udon", "ramen", "soba"]))
+        try! s1.change { $0.japaneseFood[1].set("sushi") }
         XCTAssertEqual(s1.content, Scheme(japaneseFood: ["udon", "sushi", "soba"]))
         XCTAssertEqual(s1.content.japaneseFood, ["udon", "sushi", "soba"])
         XCTAssertEqual(s1.content.japaneseFood[0], "udon")
@@ -456,8 +456,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var japaneseFood: [String]
         }
-        var s1 = Document(Scheme(japaneseFood: ["udon", "ramen", "soba"]))
-        s1.change {
+        var s1 = try! Document(Scheme(japaneseFood: ["udon", "ramen", "soba"]))
+        try! s1.change {
             $0.japaneseFood[0].set("うどん")
             $0.japaneseFood[2].set("そば")
         }
@@ -479,11 +479,11 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var noodles: [Noodle]
         }
-        var s1 = Document(Scheme(noodles: [.init(type: .ramen, dishes: ["tonkotsu", "shoyu"])]))
-        s1.change {
+        var s1 = try! Document(Scheme(noodles: [.init(type: .ramen, dishes: ["tonkotsu", "shoyu"])]))
+        try! s1.change {
             $0.noodles.append(.init(type: .udon, dishes: ["tempura udon"]))
         }
-        s1.change {
+        try! s1.change {
             $0.noodles[0].dishes.append("miso")
         }
         XCTAssertEqual(s1.content, Scheme(noodles: [.init(type: .ramen, dishes: ["tonkotsu", "shoyu", "miso"]), .init(type: .udon, dishes: ["tempura udon"])]))
@@ -497,8 +497,8 @@ class AutomergeTest: XCTestCase {
             var noodles: [String]?
             var japaneseFood: [String]?
         }
-        var s1 = Document(Scheme(noodles: ["udon", "soba", "ramen"], japaneseFood: nil))
-        s1.change {
+        var s1 = try! Document(Scheme(noodles: ["udon", "soba", "ramen"], japaneseFood: nil))
+        try! s1.change {
             $0.japaneseFood.set($0.noodles?.get())
             $0.noodles?.set(["wonton", "pho"])
         }
@@ -514,8 +514,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var letters: [String]
         }
-        var s1 = Document(Scheme(letters: []))
-        s1.change {
+        var s1 = try! Document(Scheme(letters: []))
+        try! s1.change {
             $0.letters.set(["a", "b", "c"])
             $0.letters[1].set("d")
         }
@@ -528,14 +528,14 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var noodles: [String]
         }
-        var s1 = Document(Scheme(noodles: []))
-        s1.change {
+        var s1 = try! Document(Scheme(noodles: []))
+        try! s1.change {
             $0.noodles.append("udon")
             $0.noodles.remove(at: 0)
         }
         XCTAssertEqual(s1.content, Scheme(noodles: []))
         // do the add-remove cycle twice, test for #151 (https://github.com/automerge/automerge/issues/151)
-        s1.change {
+        try! s1.change {
             $0.noodles.append("soba")
             $0.noodles.remove(at: 0)
         }
@@ -547,8 +547,8 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var maze: [[[[[[[[String]]]]]]]]
         }
-        var s1 = Document(Scheme(maze: [[[[[[[["noodles"]]]]]]]]))
-        s1.change {
+        var s1 = try! Document(Scheme(maze: [[[[[[[["noodles"]]]]]]]]))
+        try! s1.change {
             $0.maze[0][0][0][0][0][0][0].append("found")
         }
         XCTAssertEqual(s1.content, Scheme(maze: [[[[[[[["noodles", "found"]]]]]]]]))
@@ -565,18 +565,18 @@ class AutomergeTest: XCTestCase {
                 var str: String
             }
         }
-        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10"), "b": .init(num: 20, str: "20")], num: 0))
-        s1.change {
+        var s1 = try! Document(Scheme(objects: ["a": .init(num: 10, str: "10"), "b": .init(num: 20, str: "20")], num: 0))
+        try! s1.change {
             $0.num.set(1)
             $0.objects["a"].num.set(11)
         }
         var s2 = s1
-        s2.change {
+        try! s2.change {
             $0.objects["b"].num.set(21)
             $0.objects["c"].set(.init(num: 30, str: "30"))
         }
         var s3 = s2
-        s3.change {
+        try! s3.change {
             $0.objects.removeValue(forKey: "a")
         }
         XCTAssertEqual(s1.content, Scheme(objects: ["a": .init(num: 11, str: "10"), "b": .init(num: 20, str: "20")], num: 1))
@@ -604,23 +604,23 @@ class AutomergeTest: XCTestCase {
                 var list: [String]
             }
         }
-        var s1 = Document(Scheme(objects: ["a": .init(num: 10, str: "10", list: ["x"])]))
+        var s1 = try! Document(Scheme(objects: ["a": .init(num: 10, str: "10", list: ["x"])]))
         for _ in 0..<3 {
-            s1.change {
+            try! s1.change {
                 $0.objects["a"].set(Scheme.Object(num: 11, str: "10", list: ["y"]))
             }
             XCTAssertNil(s1.rootProxy().conflicts(dynamicMember: \.objects))
         }
-        XCTAssertEqual(s1.allChanges().count, 2)
+        XCTAssertEqual(try! s1.allChanges().count, 2)
     }
 
     func testSerialUseCounter1() {
         struct Scheme: Codable, Equatable {
             var counter: Counter?
         }
-        var s1 = Document(Scheme(counter: nil))
-        s1.change { $0.counter?.set(1) }
-        s1.change { $0.counter?.increment(2) }
+        var s1 = try! Document(Scheme(counter: nil))
+        try! s1.change { $0.counter?.set(1) }
+        try! s1.change { $0.counter?.increment(2) }
 
         XCTAssertEqual(s1.content, Scheme(counter: 3))
     }
@@ -631,9 +631,9 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var counter: Counter?
         }
-        let s1 = Document(Scheme(counter: 0))
+        let s1 = try! Document(Scheme(counter: 0))
         var s2 = s1
-        s2.change {
+        try! s2.change {
             $0.counter?.increment(2)
             $0.counter?.decrement()
             $0.counter?.increment(3)
@@ -648,10 +648,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var foo: String?; var hello: String?
         }
-        let s1 = Document(Scheme(foo: "bar", hello: nil))
-        let s2 = Document(Scheme(foo: nil, hello: "world"))
+        let s1 = try! Document(Scheme(foo: "bar", hello: nil))
+        let s2 = try! Document(Scheme(foo: nil, hello: "world"))
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s3.content.foo, "bar")
         XCTAssertEqual(s3.content.hello, "world")
         XCTAssertEqual(s3.content, Scheme(foo: "bar", hello: "world"))
@@ -664,12 +664,12 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var counter: Counter?
         }
-        var s1 = Document(Scheme(counter: 0))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.counter?.increment() }
-        s2.change { $0.counter?.increment(2) }
+        var s1 = try! Document(Scheme(counter: 0))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.counter?.increment() }
+        try! s2.change { $0.counter?.increment(2) }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s1.content.counter?.value, 1)
         XCTAssertEqual(s2.content.counter?.value, 2)
         XCTAssertEqual(s3.content.counter?.value, 3)
@@ -681,12 +681,12 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var counter: Counter?
         }
-        var s1 = Document(Scheme(counter: 0))
-        s1.change { $0.counter?.increment() }
-        var s2 = Document(Scheme(counter: 100))
-        s2.change { $0.counter?.increment(3) }
+        var s1 = try! Document(Scheme(counter: 0))
+        try! s1.change { $0.counter?.increment() }
+        var s2 = try! Document(Scheme(counter: 100))
+        try! s2.change { $0.counter?.increment(3) }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         if s1.actor > s2.actor {
             XCTAssertEqual(s3.content.counter?.value, 1)
         } else {
@@ -704,9 +704,9 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var field: String?
         }
-        var s1 = Document(Scheme(field: "one"))
-        let s2 = Document(Scheme(field: "two"))
-        s1.merge(s2)
+        var s1 = try! Document(Scheme(field: "one"))
+        let s2 = try! Document(Scheme(field: "two"))
+        try! s1.merge(s2)
         if s1.actor > s2.actor {
             XCTAssertEqual(s1.content.field, "one")
         } else {
@@ -723,11 +723,11 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["finch"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.birds[0].set("greenfinch") }
-        s2.change { $0.birds[0].set("goldfinch") }
-        s1.merge(s2)
+        var s1 = try! Document(Scheme(birds: ["finch"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.birds[0].set("greenfinch") }
+        try! s2.change { $0.birds[0].set("goldfinch") }
+        try! s1.merge(s2)
         if s1.actor > s2.actor {
             XCTAssertEqual(s1.content.birds, ["greenfinch"])
         } else {
@@ -749,15 +749,15 @@ class AutomergeTest: XCTestCase {
             }
             var list: [Obj]
         }
-        var s1 = Document(Scheme(list: [.init(map1: false, map2: false, key: 0)]))
+        var s1 = try! Document(Scheme(list: [.init(map1: false, map2: false, key: 0)]))
         XCTAssertEqual(s1.content, Scheme(list: [.init(map1: false, map2: false, key: 0)]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.list[0].set(.init(map1: true, map2: nil, key: nil)) }
-        s1.change { $0.list[0].key.set(1) }
-        s2.change { $0.list[0].set(.init(map1: nil, map2: true, key: nil)) }
-        s2.change { $0.list[0].key.set(2) }
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.list[0].set(.init(map1: true, map2: nil, key: nil)) }
+        try! s1.change { $0.list[0].key.set(1) }
+        try! s2.change { $0.list[0].set(.init(map1: nil, map2: true, key: nil)) }
+        try! s2.change { $0.list[0].key.set(2) }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         if s1.actor > s2.actor {
             XCTAssertEqual(s3.content.list, [.init(map1: true, map2: nil, key: 1)])
         } else {
@@ -779,10 +779,10 @@ class AutomergeTest: XCTestCase {
             }
             var config: Config
         }
-        let s1 = Document(Scheme(config: .init(background: "blue")))
-        let s2 = Document(Scheme(config: .init(logo_url: "logo.png")))
+        let s1 = try! Document(Scheme(config: .init(background: "blue")))
+        let s2 = try! Document(Scheme(config: .init(logo_url: "logo.png")))
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqualOneOf(s3.content,
                             Scheme(config: .init(background: "blue")),
                             Scheme(config: .init(logo_url: "logo.png")))
@@ -797,13 +797,13 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var field: String
         }
-        let s1 = Document(Scheme(field: "one"))
-        var s2 = Document(Scheme(field: "two"))
+        let s1 = try! Document(Scheme(field: "one"))
+        var s2 = try! Document(Scheme(field: "two"))
         var s3 = s1
-        s3.merge(s2)
-        s3.change { $0.field.set("three") }
+        try! s3.merge(s2)
+        try! s3.change { $0.field.set("three") }
         XCTAssertEqual(s3.content, Scheme(field: "three"))
-        s2.merge(s3)
+        try! s2.merge(s3)
         XCTAssertEqual(s2.content, Scheme(field: "three"))
         XCTAssertNil(s2.rootProxy().conflicts(dynamicMember: \.field))
     }
@@ -813,18 +813,18 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var list: [String]
         }
-        var s1 = Document(Scheme(list: ["one", "three"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change {
+        var s1 = try! Document(Scheme(list: ["one", "three"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change {
             $0.list.insert("two", at: 1)
         }
-        s2.change({
+        try! s2.change({
             $0.list.append("four")
         })
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s3.content, Scheme(list: ["one", "two", "three", "four"]))
-        s2.merge(s3)
+        try! s2.merge(s3)
         XCTAssertNil(s2.rootProxy().conflicts(dynamicMember: \.list))
     }
 
@@ -833,20 +833,20 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["parakeet"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change {
+        var s1 = try! Document(Scheme(birds: ["parakeet"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change {
             $0.birds.append("starling")
         }
-        s2.change({
+        try! s2.change({
             $0.birds.append("chaffinch")
         })
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqualOneOf(s3.content,
                             Scheme(birds: ["parakeet", "starling", "chaffinch"]),
                             Scheme(birds: ["parakeet", "chaffinch", "starling"]))
-        s2.merge(s3)
+        try! s2.merge(s3)
         XCTAssertEqual(s2.content, s3.content)
     }
 
@@ -856,12 +856,12 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var bestBird: String?
         }
-        var s1 = Document(Scheme(bestBird: "robin"))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.bestBird.set(nil) }
-        s2.change { $0.bestBird.set("magpie") }
+        var s1 = try! Document(Scheme(bestBird: "robin"))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.bestBird.set(nil) }
+        try! s2.change { $0.bestBird.set("magpie") }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s1.content, Scheme(bestBird: nil))
         XCTAssertEqual(s2.content, Scheme(bestBird: "magpie"))
         XCTAssertEqual(s3.content, Scheme(bestBird: "magpie"))
@@ -875,14 +875,14 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["blackbird", "thrush", "goldfinch"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.birds[1].set("starling") }
-        s2.change {
+        var s1 = try! Document(Scheme(birds: ["blackbird", "thrush", "goldfinch"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.birds[1].set("starling") }
+        try! s2.change {
             $0.birds.remove(at: 1)
         }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s1.content, Scheme(birds: ["blackbird", "starling", "goldfinch"]))
         XCTAssertEqual(s2.content, Scheme(birds: ["blackbird", "goldfinch"]))
         XCTAssertEqual(s3.content, Scheme(birds: ["blackbird", "starling", "goldfinch"]))
@@ -893,18 +893,18 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["blackbird", "thrush", "goldfinch"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change {
+        var s1 = try! Document(Scheme(birds: ["blackbird", "thrush", "goldfinch"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change {
             $0.birds.replaceSubrange(1...2, with: [String]())
         }
-        s2.change {
+        try! s2.change {
             $0.birds.insert("starling", at: 2)
         }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s3.content, Scheme(birds: ["blackbird", "starling"]))
-        s2.merge(s3)
+        try! s2.merge(s3)
         XCTAssertEqual(s2.content, Scheme(birds: ["blackbird", "starling"]))
     }
 
@@ -913,16 +913,16 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["albatross", "buzzard", "cormorant"])) // 1
-        var s2 = Document<Scheme>(changes: s1.allChanges()) // 0
-        s1.change {
+        var s1 = try! Document(Scheme(birds: ["albatross", "buzzard", "cormorant"])) // 1
+        var s2 = try! Document<Scheme>(changes: s1.allChanges()) // 0
+        try! s1.change {
             $0.birds.remove(at: 1)
         } // 2
-        s2.change {
+        try! s2.change {
             $0.birds.remove(at: 1)
         } // 1
         var s3 = s1
-        s3.merge(s2) // s3
+        try! s3.merge(s2) // s3
         XCTAssertEqual(s3.content, Scheme(birds: ["albatross", "cormorant"]))
     }
 
@@ -931,16 +931,16 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["albatross", "buzzard", "cormorant"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change {
+        var s1 = try! Document(Scheme(birds: ["albatross", "buzzard", "cormorant"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change {
             $0.birds.remove(at: 0)
         }
-        s2.change {
+        try! s2.change {
             $0.birds.remove(at: 1)
         }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s3.content, Scheme(birds: ["cormorant"]))
     }
 
@@ -958,12 +958,12 @@ class AutomergeTest: XCTestCase {
             }
             var animals: Animals
         }
-        var s1 = Document(Scheme(animals: .init(birds: .init(pink: "flamingo", black: "starling", brown: nil), mammals: ["badger"])))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change { $0.animals.birds?.brown?.set("sparrow") }
-        s2.change { $0.animals.birds.set(nil) }
+        var s1 = try! Document(Scheme(animals: .init(birds: .init(pink: "flamingo", black: "starling", brown: nil), mammals: ["badger"])))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change { $0.animals.birds?.brown?.set("sparrow") }
+        try! s2.change { $0.animals.birds.set(nil) }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqual(s1.content, Scheme(animals: .init(birds: .init(pink: "flamingo", black: "starling", brown: "sparrow"), mammals: ["badger"])))
         XCTAssertEqual(s2.content, Scheme(animals: .init(birds: nil, mammals: ["badger"])))
         XCTAssertEqual(s3.content, Scheme(animals: .init(birds: nil, mammals: ["badger"])))
@@ -974,16 +974,16 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var wisdom: [String]
         }
-        var s1 = Document(Scheme(wisdom: []))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s1.change {
+        var s1 = try! Document(Scheme(wisdom: []))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s1.change {
             $0.wisdom.append(contentsOf: ["to", "be", "is", "to", "do"])
         }
-        s2.change {
+        try! s2.change {
             $0.wisdom.append(contentsOf: ["to", "do", "is", "to", "be"])
         }
         var s3 = s1
-        s3.merge(s2)
+        try! s3.merge(s2)
         XCTAssertEqualOneOf(s3.content.wisdom,
                             ["to", "be", "is", "to", "do", "to", "do", "is", "to", "be"],
                             ["to", "do", "is", "to", "be", "to", "be", "is", "to", "do"])
@@ -996,11 +996,11 @@ class AutomergeTest: XCTestCase {
             var list: [String]
         }
 
-        var s1 = Document(Scheme(list: []), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-        var s2 = Document(Scheme(list: []), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
-        s1.change { $0.list.set(["two"]) }
-        s2.merge(s1)
-        s2.change {
+        var s1 = try! Document(Scheme(list: []), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+        var s2 = try! Document(Scheme(list: []), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+        try! s1.change { $0.list.set(["two"]) }
+        try! s2.merge(s1)
+        try! s2.change {
             $0.list.insert("one", at: 0)
         }
         XCTAssertEqual(s2.content.list, ["one", "two"])
@@ -1012,11 +1012,11 @@ class AutomergeTest: XCTestCase {
             var list: [String]
         }
 
-        var s1 = Document(Scheme(list: []), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
-        var s2 = Document(Scheme(list: []), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-        s1.change { $0.list.set(["two"]) }
-        s2.merge(s1)
-        s2.change {
+        var s1 = try! Document(Scheme(list: []), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+        var s2 = try! Document(Scheme(list: []), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+        try! s1.change { $0.list.set(["two"]) }
+        try! s2.merge(s1)
+        try! s2.change {
             $0.list.insert("one", at: 0)
         }
         XCTAssertEqual(s2.content.list, ["one", "two"])
@@ -1028,10 +1028,10 @@ class AutomergeTest: XCTestCase {
             var list: [String]
         }
 
-        var s1 = Document(Scheme(list: []))
-        s1.change { $0.list.set(["two"]) }
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s2.change {
+        var s1 = try! Document(Scheme(list: []))
+        try! s1.change { $0.list.set(["two"]) }
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s2.change {
             $0.list.insert("one", at: 0)
         }
         XCTAssertEqual(s2.content.list, ["one", "two"])
@@ -1043,17 +1043,17 @@ class AutomergeTest: XCTestCase {
             var list: [String]
         }
 
-        var s1 = Document(Scheme(list: ["four"]))
-        var s2 = Document<Scheme>(changes: s1.allChanges())
-        s2.change {
+        var s1 = try! Document(Scheme(list: ["four"]))
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+        try! s2.change {
             $0.list.insert("three", at: 0)
         }
-        s1.merge(s2)
-        s1.change {
+        try! s1.merge(s2)
+        try! s1.change {
             $0.list.insert("two", at: 0)
         }
-        s2.merge(s1)
-        s2.change {
+        try! s2.merge(s1)
+        try! s2.change {
             $0.list.insert("one", at: 0)
         }
 
@@ -1066,11 +1066,11 @@ class AutomergeTest: XCTestCase {
 //            var hello: String?
 //        }
 //
-//        var s1 = Document(Scheme(hello: nil))
+//        var s1 = try! Document(Scheme(hello: nil))
 //        XCTAssertFalse(s1.canUndo)
-//        s1.change { $0.hello?.set("world") }
+//        try! s1.change { $0.hello?.set("world") }
 //        XCTAssertTrue(s1.canUndo)
-//        let s2 = Document<Scheme>(changes: s1.allChanges())
+//        let s2 = try! Document<Scheme>(changes: s1.allChanges())
 //        XCTAssertFalse(s2.canUndo)
 //    }
 //
@@ -1080,8 +1080,8 @@ class AutomergeTest: XCTestCase {
 //            var hello: String?
 //        }
 //
-//        var s1 = Document(Scheme(hello: nil))
-//        s1.change { $0.hello?.set("world") }
+//        var s1 = try! Document(Scheme(hello: nil))
+//        try! s1.change { $0.hello?.set("world") }
 //        XCTAssertEqual(s1.content, Scheme(hello: "world"))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(hello: nil))
@@ -1093,8 +1093,8 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 3))
-//        s1.change { $0.value.set(4) }
+//        var s1 = try! Document(Scheme(value: 3))
+//        try! s1.change { $0.value.set(4) }
 //        XCTAssertEqual(s1.content, Scheme(value: 4))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 3))
@@ -1106,10 +1106,10 @@ class AutomergeTest: XCTestCase {
 //            var value: Int?
 //        }
 //
-//        var s1 = Document(Scheme(value: nil))
-//        s1.change { $0.value.set(1) }
-//        s1.change { $0.value.set(2) }
-//        s1.change { $0.value.set(3) }
+//        var s1 = try! Document(Scheme(value: nil))
+//        try! s1.change { $0.value.set(1) }
+//        try! s1.change { $0.value.set(2) }
+//        try! s1.change { $0.value.set(3) }
 //        XCTAssertEqual(s1.content, Scheme(value: 3))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 2))
@@ -1127,12 +1127,12 @@ class AutomergeTest: XCTestCase {
 //            var s2: String?
 //        }
 //
-//        var s1 = Document(Scheme(s1: "s1.old", s2: nil))
-//        s1.change { $0.s1.set("s1.new") }
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
-//        s2.change { $0.s2?.set("s2") }
+//        var s1 = try! Document(Scheme(s1: "s1.old", s2: nil))
+//        try! s1.change { $0.s1.set("s1.new") }
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+//        try! s2.change { $0.s2?.set("s2") }
 //
-//        s1.merge(s2)
+//        try! s1.merge(s2)
 //        XCTAssertEqual(s1.content, Scheme(s1: "s1.new", s2: "s2"))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(s1: "s1.old", s2: "s2"))
@@ -1144,15 +1144,15 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 1))
-//        s1.change(message: "set 2") { $0.value.set(2) }
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
+//        var s1 = try! Document(Scheme(value: 1))
+//        try! s1.change(message: "set 2") { $0.value.set(2) }
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
 //        s1.undo(message: "undo!")
 //        let seqs = History(document: s1).map { $0.change.seq }
 //        XCTAssertEqual(seqs, [1, 2, 3])
 //        let messages = History(document: s1).map { $0.change.message }
 //        XCTAssertEqual(messages, ["Initialization", "set 2", "undo!"])
-//        s2.merge(s1)
+//        try! s2.merge(s1)
 //        XCTAssertEqual(s2.content, Scheme(value: 1))
 //        XCTAssertEqual(s1.content, Scheme(value: 1))
 //    }
@@ -1163,11 +1163,11 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 1))
-//        s1.change { $0.value.set(2) }
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
-//        s2.change { $0.value.set(3) }
-//        s1.merge(s2)
+//        var s1 = try! Document(Scheme(value: 1))
+//        try! s1.change { $0.value.set(2) }
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+//        try! s2.change { $0.value.set(3) }
+//        try! s1.merge(s2)
 //        XCTAssertEqual(s1.content, Scheme(value: 3))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 1))
@@ -1183,8 +1183,8 @@ class AutomergeTest: XCTestCase {
 //            var settings: Settings?
 //        }
 //
-//        var s1 = Document(Scheme(settings: nil))
-//        s1.change { $0.settings.set(.init(background: "white", text: "black")) }
+//        var s1 = try! Document(Scheme(settings: nil))
+//        try! s1.change { $0.settings.set(.init(background: "white", text: "black")) }
 //        XCTAssertEqual(s1.content, Scheme(settings: .init(background: "white", text: "black")))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(settings: nil))
@@ -1197,8 +1197,8 @@ class AutomergeTest: XCTestCase {
 //            var k2: String?
 //        }
 //
-//        var s1 = Document(Scheme(k1: "v1", k2: "v2"))
-//        s1.change { $0.k2.set(nil) }
+//        var s1 = try! Document(Scheme(k1: "v1", k2: "v2"))
+//        try! s1.change { $0.k2.set(nil) }
 //        XCTAssertEqual(s1.content, Scheme(k1: "v1", k2: nil))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(k1: "v1", k2: "v2"))
@@ -1211,11 +1211,11 @@ class AutomergeTest: XCTestCase {
 //            var birds: [String]?
 //        }
 //
-//        var s1 = Document(Scheme(fish: ["trout", "sea bass"], birds: nil))
-//        s1.change { $0.birds.set(["heron", "magpie"]) }
+//        var s1 = try! Document(Scheme(fish: ["trout", "sea bass"], birds: nil))
+//        try! s1.change { $0.birds.set(["heron", "magpie"]) }
 //
 //        var s2 = s1
-//        s2.change { $0.fish.set(nil) }
+//        try! s2.change { $0.fish.set(nil) }
 //        XCTAssertEqual(s2.content, Scheme(fish: nil, birds: ["heron", "magpie"]))
 //        s2.undo()
 //        XCTAssertEqual(s2.content, Scheme(fish: ["trout", "sea bass"], birds: ["heron", "magpie"]))
@@ -1227,8 +1227,8 @@ class AutomergeTest: XCTestCase {
 //            var list: [String]
 //        }
 //
-//        var s1 = Document(Scheme(list: ["A", "B", "C"]))
-//        s1.change { $0.list.append("D") }
+//        var s1 = try! Document(Scheme(list: ["A", "B", "C"]))
+//        try! s1.change { $0.list.append("D") }
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C", "D"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C"]))
@@ -1240,8 +1240,8 @@ class AutomergeTest: XCTestCase {
 //            var list: [String]
 //        }
 //
-//        var s1 = Document(Scheme(list: ["A", "B", "C"]))
-//        s1.change { $0.list.remove(at: 1) }
+//        var s1 = try! Document(Scheme(list: ["A", "B", "C"]))
+//        try! s1.change { $0.list.remove(at: 1) }
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "C"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C"]))
@@ -1253,8 +1253,8 @@ class AutomergeTest: XCTestCase {
 //            var counter: Counter
 //        }
 //
-//        var s1 = Document(Scheme(counter: 0))
-//        s1.change { $0.counter.increment() }
+//        var s1 = try! Document(Scheme(counter: 0))
+//        try! s1.change { $0.counter.increment() }
 //        XCTAssertEqual(s1.content, Scheme(counter: 1))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(counter: 0))
@@ -1265,8 +1265,8 @@ class AutomergeTest: XCTestCase {
 //        struct Scheme: Codable, Equatable {
 //            var birds: [String]
 //        }
-//        var s1 = Document(Scheme(birds: ["peregrine falcon"]))
-//        s1.change { $0.birds.append("magpie") }
+//        var s1 = try! Document(Scheme(birds: ["peregrine falcon"]))
+//        try! s1.change { $0.birds.append("magpie") }
 //        XCTAssertFalse(s1.canRedo)
 //        s1.undo()
 //        XCTAssertTrue(s1.canRedo)
@@ -1279,9 +1279,9 @@ class AutomergeTest: XCTestCase {
 //        struct Scheme: Codable, Equatable {
 //            var birds: [String]
 //        }
-//        var s1 = Document(Scheme(birds: []))
-//        s1.change { $0.birds.append("peregrine falcon") }
-//        s1.change { $0.birds.append("sparrowhawk") }
+//        var s1 = try! Document(Scheme(birds: []))
+//        try! s1.change { $0.birds.append("peregrine falcon") }
+//        try! s1.change { $0.birds.append("sparrowhawk") }
 //        XCTAssertEqual(s1.content, Scheme(birds: ["peregrine falcon", "sparrowhawk"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(birds: ["peregrine falcon"]))
@@ -1299,11 +1299,11 @@ class AutomergeTest: XCTestCase {
 //            var sparrows: Int?
 //            var skylarks: Int?
 //        }
-//        var s1 = Document<Scheme>(Scheme(sparrows: nil, skylarks: nil))
-//        s1.change { $0.sparrows?.set(1) }
-//        s1.change { $0.skylarks?.set(1) }
-//        s1.change { $0.sparrows?.set(2) }
-//        s1.change { $0.skylarks.set(nil) }
+//        var s1 = try! Document<Scheme>(Scheme(sparrows: nil, skylarks: nil))
+//        try! s1.change { $0.sparrows?.set(1) }
+//        try! s1.change { $0.skylarks?.set(1) }
+//        try! s1.change { $0.sparrows?.set(2) }
+//        try! s1.change { $0.skylarks.set(nil) }
 //        let states: [Scheme] = [.init(sparrows: nil, skylarks: nil), .init(sparrows: 1, skylarks: nil), .init(sparrows: 1, skylarks: 1), .init(sparrows: 2, skylarks: 1), .init(sparrows: 2, skylarks: nil)]
 //        for _ in (0..<3) {
 //            for undo in (0...(states.count - 2)).reversed() {
@@ -1322,8 +1322,8 @@ class AutomergeTest: XCTestCase {
 //        struct Scheme: Codable, Equatable {
 //            var hello: String?
 //        }
-//        var s1 = Document(Scheme(hello: nil))
-//        s1.change { $0.hello?.set("world") }
+//        var s1 = try! Document(Scheme(hello: nil))
+//        try! s1.change { $0.hello?.set("world") }
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(hello: nil))
 //        s1.redo()
@@ -1336,8 +1336,8 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 3))
-//        s1.change { $0.value.set(4) }
+//        var s1 = try! Document(Scheme(value: 3))
+//        try! s1.change { $0.value.set(4) }
 //        XCTAssertEqual(s1.content, Scheme(value: 4))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 3))
@@ -1351,8 +1351,8 @@ class AutomergeTest: XCTestCase {
 //            var value: Int?
 //        }
 //
-//        var s1 = Document(Scheme(value: 123))
-//        s1.change { $0.value.set(nil) }
+//        var s1 = try! Document(Scheme(value: 123))
+//        try! s1.change { $0.value.set(nil) }
 //        XCTAssertEqual(s1.content, Scheme(value: nil))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 123))
@@ -1370,8 +1370,8 @@ class AutomergeTest: XCTestCase {
 //            var settings: Settings?
 //        }
 //
-//        var s1 = Document(Scheme(settings: nil))
-//        s1.change { $0.settings.set(.init(background: "white", text: "black")) }
+//        var s1 = try! Document(Scheme(settings: nil))
+//        try! s1.change { $0.settings.set(.init(background: "white", text: "black")) }
 //        XCTAssertEqual(s1.content, Scheme(settings: .init(background: "white", text: "black")))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(settings: nil))
@@ -1386,9 +1386,9 @@ class AutomergeTest: XCTestCase {
 //            var birds: [String]?
 //        }
 //
-//        var s1 = Document(Scheme(fish: ["trout", "sea bass"], birds: nil))
-//        s1.change { $0.birds.set(["heron", "magpie"]) }
-//        s1.change { $0.fish.set(nil) }
+//        var s1 = try! Document(Scheme(fish: ["trout", "sea bass"], birds: nil))
+//        try! s1.change { $0.birds.set(["heron", "magpie"]) }
+//        try! s1.change { $0.fish.set(nil) }
 //        XCTAssertEqual(s1.content, Scheme(fish: nil, birds: ["heron", "magpie"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(fish: ["trout", "sea bass"], birds: ["heron", "magpie"]))
@@ -1402,8 +1402,8 @@ class AutomergeTest: XCTestCase {
 //            var list: [String]
 //        }
 //
-//        var s1 = Document(Scheme(list: ["A", "B", "C"]))
-//        s1.change { $0.list.append("D") }
+//        var s1 = try! Document(Scheme(list: ["A", "B", "C"]))
+//        try! s1.change { $0.list.append("D") }
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C", "D"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C"]))
@@ -1417,8 +1417,8 @@ class AutomergeTest: XCTestCase {
 //            var list: [String]
 //        }
 //
-//        var s1 = Document(Scheme(list: ["A", "B", "C"]))
-//        s1.change { $0.list.remove(at: 1) }
+//        var s1 = try! Document(Scheme(list: ["A", "B", "C"]))
+//        try! s1.change { $0.list.remove(at: 1) }
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "C"]))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(list: ["A", "B", "C"]))
@@ -1432,8 +1432,8 @@ class AutomergeTest: XCTestCase {
 //            var counter: Counter
 //        }
 //
-//        var s1 = Document(Scheme(counter: 0))
-//        s1.change { $0.counter.increment() }
+//        var s1 = try! Document(Scheme(counter: 0))
+//        try! s1.change { $0.counter.increment() }
 //        XCTAssertEqual(s1.content, Scheme(counter: 1))
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(counter: 0))
@@ -1447,11 +1447,11 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 1))
-//        s1.change({ $0.value.set(2) })
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
-//        s2.change({ $0.value.set(3) })
-//        s1.merge(s2)
+//        var s1 = try! Document(Scheme(value: 1))
+//        try! s1.change({ $0.value.set(2) })
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+//        try! s2.change({ $0.value.set(3) })
+//        try! s1.merge(s2)
 //        s1.undo()
 //        XCTAssertEqual(s1.content, Scheme(value: 1))
 //        s1.redo()
@@ -1464,12 +1464,12 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 1))
-//        s1.change({ $0.value.set(2) })
+//        var s1 = try! Document(Scheme(value: 1))
+//        try! s1.change({ $0.value.set(2) })
 //        s1.undo()
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
-//        s2.change({ $0.value.set(3) })
-//        s1.merge(s2)
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+//        try! s2.change({ $0.value.set(3) })
+//        try! s1.merge(s2)
 //        XCTAssertEqual(s1.content, Scheme(value: 3))
 //        s1.redo()
 //        XCTAssertEqual(s1.content, Scheme(value: 2))
@@ -1482,12 +1482,12 @@ class AutomergeTest: XCTestCase {
 //            var salmon: Int?
 //        }
 //
-//        var s1 = Document(Scheme(trout: 2, salmon: nil))
-//        s1.change({ $0.trout.set(3) })
+//        var s1 = try! Document(Scheme(trout: 2, salmon: nil))
+//        try! s1.change({ $0.trout.set(3) })
 //        s1.undo()
-//        var s2 = Document<Scheme>(changes: s1.allChanges())
-//        s2.change({ $0.salmon.set(1) })
-//        s1.merge(s2)
+//        var s2 = try! Document<Scheme>(changes: s1.allChanges())
+//        try! s2.change({ $0.salmon.set(1) })
+//        try! s1.merge(s2)
 //        XCTAssertEqual(s1.content, Scheme(trout: 2, salmon: 1))
 //        s1.redo()
 //        XCTAssertEqual(s1.content, Scheme(trout: 3, salmon: 1))
@@ -1499,8 +1499,8 @@ class AutomergeTest: XCTestCase {
 //            var value: Int
 //        }
 //
-//        var s1 = Document(Scheme(value: 1))
-//        s1.change(message: "set 2") { $0.value.set(2) }
+//        var s1 = try! Document(Scheme(value: 1))
+//        try! s1.change(message: "set 2") { $0.value.set(2) }
 //        s1.undo(message: "undo")
 //        s1.redo(message: "redo!")
 //        let history = History(document: s1)
@@ -1514,22 +1514,22 @@ class AutomergeTest: XCTestCase {
     // should save and restore an empty document
     func testSaveAndLoading1() {
         struct Scheme: Codable, Equatable { }
-        let s = Document<Scheme>(data: Document(Scheme()).save())
+        let s = try! Document<Scheme>(data: Document(Scheme()).save())
         XCTAssertEqual(s.content, Scheme())
     }
 
     // should generate a new random actor ID
     func testSaveAndLoading2() {
         struct Scheme: Codable, Equatable { }
-        let s1 = Document(Scheme())
-        let s2 = Document<Scheme>(data:s1.save())
+        let s1 = try! Document(Scheme())
+        let s2 = try! Document<Scheme>(data:s1.save())
         XCTAssertNotEqual(s1.actor, s2.actor)
     }
 
     // should allow a custom actor ID to be set
     func testSaveAndLoading3() {
         struct Scheme: Codable, Equatable { }
-        let s = Document<Scheme>(data: Document(Scheme()).save(), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+        let s = try! Document<Scheme>(data: Document(Scheme()).save(), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
         XCTAssertEqual(s.actor, Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
     }
 
@@ -1542,8 +1542,8 @@ class AutomergeTest: XCTestCase {
             }
             let todos: [Todo]
         }
-        let s1 = Document(Scheme(todos: [.init(title: "water plants'", done: false)]))
-        let s2 = Document<Scheme>(data: s1.save())
+        let s1 = try! Document(Scheme(todos: [.init(title: "water plants'", done: false)]))
+        let s2 = try! Document<Scheme>(data: s1.save())
         XCTAssertEqual(s2.content, Scheme(todos: [.init(title: "water plants'", done: false)]))
     }
 
@@ -1552,10 +1552,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             let x: Int
         }
-        var s1 = Document(Scheme(x: 3), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-        let s2 = Document(Scheme(x: 5), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
-        s1.merge(s2)
-        let s3 = Document<Scheme>(data: s1.save())
+        var s1 = try! Document(Scheme(x: 3), actor: Actor(actorId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+        let s2 = try! Document(Scheme(x: 5), actor: Actor(actorId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+        try! s1.merge(s2)
+        let s3 = try! Document<Scheme>(data: s1.save())
         XCTAssertEqual(s1.content.x, 5)
         XCTAssertEqual(s3.content.x, 5)
         XCTAssertEqual(s1.rootProxy().conflicts(dynamicMember: \.x), ["1@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 3, "1@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": 5])
@@ -1567,10 +1567,10 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var foo: [Int]
         }
-        var doc = Document(Scheme(foo: []))
-        doc = Document(data: doc.save())
-        doc.change { $0.foo.append(1) }
-        doc = Document(data: doc.save())
+        var doc = try! Document(Scheme(foo: []))
+        doc = try! Document(data: doc.save())
+        try! doc.change { $0.foo.append(1) }
+        doc = try! Document(data: doc.save())
         XCTAssertEqual(doc.content.foo, [1])
     }
 
@@ -1581,10 +1581,10 @@ class AutomergeTest: XCTestCase {
             let config: Config
             var birds: [String]
         }
-        var s = Document(Scheme(config: .init(background: "blue"), birds: []))
-        s.change({ $0.birds.set(["mallard"]) })
-        s.change { $0.birds.insert("oystercatcher", at: 0) }
-        let history = History(document: s).map { $0.snapshot }
+        var s = try! Document(Scheme(config: .init(background: "blue"), birds: []))
+        try! s.change({ $0.birds.set(["mallard"]) })
+        try! s.change { $0.birds.insert("oystercatcher", at: 0) }
+        let history = try! History(document: s).map { $0.snapshot }
         XCTAssertEqual(history, [
             Scheme(config: .init(background: "blue"), birds: []),
             Scheme(config: .init(background: "blue"), birds: ["mallard"]),
@@ -1597,14 +1597,14 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var books: [String]
         }
-        var s = Document(Scheme(books: []))
-        s.change(message: "Add Orwell") {
+        var s = try! Document(Scheme(books: []))
+        try! s.change(message: "Add Orwell") {
             $0.books.append("Nineteen Eighty-Four")
         }
-        s.change(message: "Add Huxley") {
+        try! s.change(message: "Add Huxley") {
             $0.books.append("Brave New World")
         }
-        let messages = History(document: s).map { $0.change.message }
+        let messages = try! History(document: s).map { $0.change.message }
         XCTAssertEqual(messages, [
             "Initialization",
             "Add Orwell",
@@ -1617,14 +1617,14 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var books: [String]
         }
-        var s = Document(Scheme(books: []))
-        s.change(message: "Add Orwell") {
+        var s = try! Document(Scheme(books: []))
+        try! s.change(message: "Add Orwell") {
             $0.books.append("Nineteen Eighty-Four")
         }
-        s.change(message: "Add Huxley") {
+        try! s.change(message: "Add Huxley") {
             $0.books.append("Brave New World")
         }
-        let message = History(document: s).last?.change.message
+        let message = try! History(document: s).last?.change.message
         XCTAssertEqual(message, "Add Huxley")
     }
 
@@ -1634,14 +1634,14 @@ class AutomergeTest: XCTestCase {
             var books: [String]
         }
         let actor = Actor()
-        var s = Document(Scheme(books: []), actor: actor)
-        s.change(message: "Add Orwell") {
+        var s = try! Document(Scheme(books: []), actor: actor)
+        try! s.change(message: "Add Orwell") {
             $0.books.append("Nineteen Eighty-Four")
         }
-        s.change(message: "Add Huxley") {
+        try! s.change(message: "Add Huxley") {
             $0.books.append("Brave New World")
         }
-        let historyActor = History(document: s).last?.change.actor
+        let historyActor = try! History(document: s).last?.change.actor
         XCTAssertEqual(historyActor, actor)
     }
 
@@ -1650,17 +1650,17 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        let s1 = Document(Scheme(birds: ["Chaffinch"]))
-        var s2 = Document<Scheme>(data: s1.save())
-        s2.change({
+        let s1 = try! Document(Scheme(birds: ["Chaffinch"]))
+        var s2 = try! Document<Scheme>(data: s1.save())
+        try! s2.change({
             $0.birds.append("Bullfinch")
         })
-        let changes = s2.allChanges()
-        var s3 = Document<Scheme>(changes: [changes[1]])
-        XCTAssertEqual(s3.getMissingsDeps(), Change(change: changes[1]).deps)
-        s3.apply(changes: [changes[0]])
+        let changes = try! s2.allChanges()
+        var s3 = try! Document<Scheme>(changes: [changes[1]])
+        XCTAssertEqual(try! s3.getMissingsDeps(), try! Change(change: changes[1]).deps)
+        try! s3.apply(changes: [changes[0]])
         XCTAssertEqual(s3.content, Scheme(birds: ["Chaffinch", "Bullfinch"]))
-        XCTAssertEqual(s3.getMissingsDeps(), [])
+        XCTAssertEqual(try! s3.getMissingsDeps(), [])
     }
 
     // should report missing dependencies
@@ -1668,9 +1668,9 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["Chaffinch"]))
-        s1.change({ $0.birds.append("Test") })
-        let heads = s1.getHeads()
+        var s1 = try! Document(Scheme(birds: ["Chaffinch"]))
+        try! s1.change({ $0.birds.append("Test") })
+        let heads = try! s1.getHeads()
         XCTAssertEqual(heads.count, 1)
     }
 
@@ -1678,9 +1678,9 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        let s1 = Document(Scheme(birds: ["Chaffinch"]))
-        let s2 = Document<Scheme>(changes: s1.allChanges())
-        let changes = s1.getChanges(between: s2)
+        let s1 = try! Document(Scheme(birds: ["Chaffinch"]))
+        let s2 = try! Document<Scheme>(changes: s1.allChanges())
+        let changes = try! s1.getChanges(between: s2)
         XCTAssertEqual(changes.count, 0)
     }
 
@@ -1688,15 +1688,15 @@ class AutomergeTest: XCTestCase {
         struct Scheme: Codable, Equatable {
             var birds: [String]
         }
-        var s1 = Document(Scheme(birds: ["Chaffinch"]))
+        var s1 = try! Document(Scheme(birds: ["Chaffinch"]))
         var s2 = s1
-        s1.change({ $0.birds.append("Bullfinch") })
-        let changes = s1.getChanges(between: s2)
+        try! s1.change({ $0.birds.append("Bullfinch") })
+        let changes = try! s1.getChanges(between: s2)
         XCTAssertEqual(changes.count, 1)
 
-        s2.apply(changes: changes)
+        try! s2.apply(changes: changes)
 
-        let changes2 = s1.getChanges(between: s2)
+        let changes2 = try! s1.getChanges(between: s2)
         XCTAssertEqual(changes2.count, 0)
     }
 

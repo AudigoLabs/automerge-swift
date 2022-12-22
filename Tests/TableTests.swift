@@ -18,9 +18,9 @@ class TableTest: XCTestCase {
             var books: Table<Book>?
         }
         let actor = Actor()
-        var doc = Document(Scheme(books: nil), actor: actor)
+        var doc = try! Document(Scheme(books: nil), actor: actor)
 
-        let req = doc.change {
+        let req = try! doc.change {
             $0.books?.set(Table())
         }
 
@@ -46,10 +46,10 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var doc = Document(Scheme(books: Table()), actor: actor)
+        var doc = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId!
-        let req = doc.change {
+        let req = try! doc.change {
             rowId = $0.books.add(.init(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications"))
         }
 
@@ -79,11 +79,11 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var doc = Document(Scheme(books: Table()), actor: actor)
+        var doc = try! Document(Scheme(books: Table()), actor: actor)
 
         let rowIdStr = "b9b916c1-3da7-4427-bd16-a918927c60ec"
         let rowId = ObjectId(stringLiteral: rowIdStr)
-        let req = doc.change {
+        let req = try! doc.change {
             $0.books.add(.init(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications"), id: rowId)
         }
 
@@ -114,10 +114,10 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId?
-        s1.change {
+        try! s1.change {
             rowId = $0.books.add(.ddia)
         }
         XCTAssertEqual(s1.content.books.row(by: rowId!)?.value, .ddia)
@@ -134,9 +134,9 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
-        s1.change {
+        try! s1.change {
             $0.books.add(.ddia)
         }
         XCTAssertEqual(s1.content.books.count, 1)
@@ -154,10 +154,10 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId?
-        s1.change {
+        try! s1.change {
             rowId = $0.books.add(.ddia)
         }
         XCTAssertEqual(s1.content.books.ids, [rowId!])
@@ -174,13 +174,13 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId?
-        s1.change {
+        try! s1.change {
             rowId = $0.books.add(.ddia)
         }
-        XCTAssertEqual(Document<Scheme>(changes: s1.allChanges()).content.books.row(by: rowId!)?.value, .ddia)
+        XCTAssertEqual(try! Document<Scheme>(changes: s1.allChanges()).content.books.row(by: rowId!)?.value, .ddia)
     }
 
     // should allow a row to be updated
@@ -195,13 +195,13 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId!
-        s1.change {
+        try! s1.change {
             rowId = $0.books.add(.ddia)
         }
-        s1.change {
+        try! s1.change {
             $0.books.row(by: rowId)?.isbn.set("9781449373320")
         }
         XCTAssertEqual(s1.content.books.row(by: rowId!)?.value, Scheme.Book(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications", isbn: "9781449373320"))
@@ -218,13 +218,13 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId!
-        s1.change {
+        try! s1.change {
             rowId = $0.books.add(.ddia)
         }
-        s1.change {
+        try! s1.change {
             $0.books.removeRow(by: rowId)
         }
         XCTAssertEqual(s1.content.books.count, 0)
@@ -242,18 +242,18 @@ class TableTest: XCTestCase {
             var books: Table<Book>
         }
         let actor = Actor()
-        var s1 = Document(Scheme(books: Table()), actor: actor)
-        var s2 = Document<Scheme>(changes: s1.allChanges())
+        var s1 = try! Document(Scheme(books: Table()), actor: actor)
+        var s2 = try! Document<Scheme>(changes: s1.allChanges())
 
         var ddia: ObjectId!
         var rsdp: ObjectId!
-        s1.change {
+        try! s1.change {
             ddia = $0.books.add(.ddia)
         }
-        s2.change {
+        try! s2.change {
             rsdp = $0.books.add(.rsdp)
         }
-        s1.merge(s2)
+        try! s1.merge(s2)
         XCTAssertEqual(s1.content.books.row(by: ddia)?.value, .ddia)
         XCTAssertEqual(s1.content.books.row(by: ddia)?.id, ddia)
         XCTAssertEqual(s1.content.books.row(by: rsdp)?.value, .rsdp)

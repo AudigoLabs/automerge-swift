@@ -17,9 +17,9 @@ class DocumentationSnippetsTest: XCTestCase {
             var bird: String?
         }
         // Create a model with an initial empty state.
-        var doc = Document(Model(bird: nil))
+        var doc = try! Document(Model(bird: nil))
         // Update the model to set a value.
-        doc.change { proxy in
+        try! doc.change { proxy in
             proxy.bird?.set(newValue: "magpie")
         }
     }
@@ -36,24 +36,24 @@ class DocumentationSnippetsTest: XCTestCase {
         // example: 554560f135b14f18b8fa37ed999624c2
         
         // Initialize documents with known actor IDs.
-        var doc1 = Document(Coordinate(), actor: actor1)
+        var doc1 = try! Document(Coordinate(), actor: actor1)
         // replicate, rather than create a whole new doc...
-        var doc2 = Document<Coordinate>(data: doc1.save(), actor: actor2)
+        var doc2 = try! Document<Coordinate>(data: doc1.save(), actor: actor2)
         // Creates a new, indepdendent doc:
         //        var doc2 = Document(Coordinate(), actor: actor2)
 
         // Set the values independently.
-        doc1.change { doc in
+        try! doc1.change { doc in
             doc.x.set(1)
         }
         
-        doc2.change { doc in
+        try! doc2.change { doc in
             doc.x.set(2)
         }
         
         // Merge the changes in both directions.
-        doc1.merge(doc2)
-        doc2.merge(doc1)
+        try! doc1.merge(doc2)
+        try! doc2.merge(doc1)
         
         // Now, `doc1` might be either {x: 1} or {x: 2}.
         // However, `doc2` will be the same, whichever value is

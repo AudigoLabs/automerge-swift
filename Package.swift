@@ -39,7 +39,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(name: "AutomergeBackend", url: "https://github.com/AudigoLabs/automerge-swift-backend", from: "0.1.15"),
+        .package(name: "AutomergeBackend", url: "https://github.com/AudigoLabs/automerge-swift-backend", from: "0.1.17"),
         .package(name: "ZippyJSON", url: "https://github.com/michaeleisel/ZippyJSON", from: "1.2.4"),
     ],
     targets: [

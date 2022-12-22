@@ -34,9 +34,9 @@ final class DocumentPerformanceTest: XCTestCase {
 
 
         measure() {
-            var automerge = Document(TravelList.initialScheme)
+            var automerge = try! Document(TravelList.initialScheme)
             let trip = Trip(name: "Italien 2019")
-            automerge.change {
+            try! automerge.change {
                 $0.trips.append(trip)
             }
             XCTAssertEqual(automerge.content.trips.count, 1)
@@ -67,10 +67,10 @@ final class DocumentPerformanceTest: XCTestCase {
 
 
         measure() {
-            var automerge = Document(TravelList.initialScheme)
+            var automerge = try! Document(TravelList.initialScheme)
             let trip = Trip(name: "Italien 2019")
             for _ in 0...100  {
-                automerge.change {
+                try! automerge.change {
                     $0.trips.append(trip)
                 }
             }
@@ -85,18 +85,18 @@ final class DocumentPerformanceTest: XCTestCase {
         struct Schema: Codable, Equatable {
             var birds: [Object]
         }
-        var automerge = Document(Schema(birds: [Object(name: "Test")]))
+        var automerge = try! Document(Schema(birds: [Object(name: "Test")]))
         (0...1000).forEach({ i in
-            automerge.change({
+            try! automerge.change({
                 $0.birds.append(Object(name: "\(i)"))
             })
         })
 
 
-        let document = automerge.save()
+        let document = try! automerge.save()
 
         measure() {
-            let newDocument = Document<Schema>(data: document, actor: Actor())
+            let newDocument = try! Document<Schema>(data: document, actor: Actor())
             XCTAssertEqual(newDocument.content, automerge.content)
         }
     }

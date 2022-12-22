@@ -14,8 +14,8 @@ public struct History<T: Codable> {
     
     /// Creates a history of the provided Automerge document.
     /// - Parameter document: The document to inspect for the change history.
-    public init(document: Document<T>) {
-        self.init(actor: document.actor, binaryChanges: document.allChanges())
+    public init(document: Document<T>) throws {
+        self.init(actor: document.actor, binaryChanges: try document.allChanges())
     }
     
     /// Creates a history of an Automerge document from the list binary changes that you provide.
@@ -42,9 +42,9 @@ extension History: Collection, Sequence, BidirectionalCollection {
     public subscript(position: Int) -> Commit<T> {
         get {
             let binaryChange = binaryChanges[position]
-            let change = Change(change: binaryChange)
+            let change = try! Change(change: binaryChange)
 
-            return Commit(snapshot: Document(changes: Array(binaryChanges[0...position]), actor: actor).content, change: change)
+            return Commit(snapshot: try! Document(changes: Array(binaryChanges[0...position]), actor: actor).content, change: change)
         }
     }
 
