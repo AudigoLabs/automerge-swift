@@ -215,7 +215,8 @@ extension RSBackend {
     private var backendError: AutomergeError {
         let errStr = automerge_error(automerge)
         if let errStr = errStr {
-            return .backend(String(cString: errStr))
+            let error = String(cString: errStr)
+            return .backend(error.trimmingCharacters(in: CharacterSet(charactersIn: "\"")))
         } else {
             return .backend(nil)
         }
