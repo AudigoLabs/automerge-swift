@@ -20,15 +20,15 @@ class TableTest: XCTestCase {
         let actor = Actor()
         var doc = try! Document(Scheme(books: nil), actor: actor)
 
-        let req = try! doc.change {
+        let res = try! doc.change {
             $0.books?.set(Table())
         }
 
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 1,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: actor,
                         seq: 1,
                         ops: [
@@ -49,17 +49,17 @@ class TableTest: XCTestCase {
         var doc = try! Document(Scheme(books: Table()), actor: actor)
 
         var rowId: ObjectId!
-        let req = try! doc.change {
+        let res = try! doc.change {
             rowId = $0.books.add(.init(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications"))
         }
 
         let books = doc.rootProxy().books.objectId
         let rowObjID = doc.rootProxy().books.row(by: rowId)?.objectId
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 2,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: actor,
                         seq: 2,
                         ops: [
@@ -83,17 +83,17 @@ class TableTest: XCTestCase {
 
         let rowIdStr = "b9b916c1-3da7-4427-bd16-a918927c60ec"
         let rowId = ObjectId(stringLiteral: rowIdStr)
-        let req = try! doc.change {
+        let res = try! doc.change {
             $0.books.add(.init(authors: "Kleppmann, Martin", title: "Designing Data-Intensive Applications"), id: rowId)
         }
 
         let books = doc.rootProxy().books.objectId
         let rowObjID = doc.rootProxy().books.row(by: rowId)?.objectId
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 2,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: actor,
                         seq: 2,
                         ops: [

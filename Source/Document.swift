@@ -182,7 +182,7 @@ public struct Document<T: Codable> {
     /// ```
     ///
     @discardableResult
-    public mutating func change(message: String = "", time: Date = Date(), _ execute: (Proxy<T>) -> Void) throws -> Request? {
+    public mutating func change(message: String = "", time: Date = Date(), _ execute: (Proxy<T>) -> Void) throws -> (request: Request, patch: Patch)? {
         let context = Context(cache: cache, actorId: actor, maxOp: state.maxOp)
         execute(.rootProxy(context: context))
         if context.idUpdated {
@@ -279,7 +279,7 @@ public struct Document<T: Codable> {
      * particular, the `message` property of `options` is an optional human-readable
      * string describing the change.
      */
-    private mutating func makeChange(context: Context, message: String, time: Date) throws -> Request {
+    private mutating func makeChange(context: Context, message: String, time: Date) throws -> (request: Request, patch: Patch) {
         state.seq += 1
         let request = Request(
             startOp: state.maxOp + 1,
@@ -292,7 +292,7 @@ public struct Document<T: Codable> {
         )
         let patch = try writableBackend().applyLocalChange(request: request)
         applyPatchToDoc(patch: patch, fromBackend: true, context: context)
-        return request
+        return (request: request, patch: patch)
     }
 
     private mutating func writableBackend() -> RSBackend {

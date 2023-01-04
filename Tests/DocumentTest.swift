@@ -46,14 +46,14 @@ class DocumentTest: XCTestCase {
         }
         let actor = Actor()
         var doc = try! Document(Schema(bird: nil), actor: actor)
-        let req = try! doc.change { $0.bird.set("magpie") }
+        let res = try! doc.change { $0.bird.set("magpie") }
 
         XCTAssertEqual(doc.content, Schema(bird: "magpie"))
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 1,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: actor,
                         seq: 1,
                         ops: [
@@ -68,14 +68,14 @@ class DocumentTest: XCTestCase {
             var birds: Birds?
         }
         var doc = try! Document(Schema(birds: nil))
-        let req = try! doc.change { $0.birds?.set(.init(wrens: 3)) }
+        let res = try! doc.change { $0.birds?.set(.init(wrens: 3)) }
         let birds = doc.rootProxy().birds!.objectId
         XCTAssertEqual(doc.content, Schema(birds: .init(wrens: 3)))
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
             startOp: 1,
             deps: [],
             message: "",
-            time: req!.time,
+            time: res!.request.time,
             actor: doc.actor,
             seq: 1,
             ops: [
@@ -94,16 +94,16 @@ class DocumentTest: XCTestCase {
         var doc1 = try! Document(Schema(birds: nil))
         try! doc1.change { $0.birds?.set(.init(wrens: 3, sparrows: nil)) }
         var doc2 = doc1
-        let req = try! doc2.change { $0.birds?.sparrows?.set(15) }
+        let res = try! doc2.change { $0.birds?.sparrows?.set(15) }
         let birds = doc2.rootProxy().birds?.objectId
 
         XCTAssertEqual(doc1.content, Schema(birds: .init(wrens: 3, sparrows: nil)))
         XCTAssertEqual(doc2.content, Schema(birds: .init(wrens: 3, sparrows: 15.0)))
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 3,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: doc1.actor,
                         seq: 2,
                         ops: [
@@ -120,20 +120,20 @@ class DocumentTest: XCTestCase {
         let actor = Actor()
         let doc1 = try! Document(Schema(magpies: 2, sparrows: 15), actor: actor)
         var doc2 = doc1
-        let req = try! doc2.change { $0.magpies.set(nil) }
+        let res = try! doc2.change { $0.magpies.set(nil) }
         XCTAssertEqual(doc1.content, Schema(magpies: 2, sparrows: 15))
         XCTAssertEqual(doc2.content, Schema(magpies: nil, sparrows: 15))
-        XCTAssertEqual(req, Request(
+        XCTAssertEqual(res?.request, Request(
                         startOp: 3,
                         deps: [],
                         message: "",
-                        time: req!.time,
+                        time: res!.request.time,
                         actor: actor,
                         seq: 2,
                         ops: [
                             Op(action: .del, obj: .root, key: "magpies", insert: false, value: nil, pred: ["1@\(actor)"])
                         ]))
-        XCTAssertEqual(req?.ops[0].pred, ["1@\(actor)"])
+        XCTAssertEqual(res?.request.ops[0].pred, ["1@\(actor)"])
     }
 
         // should create lists
@@ -143,13 +143,13 @@ class DocumentTest: XCTestCase {
             }
             let actor = Actor()
             var doc1 = try! Document(Schema(birds: nil), actor: actor)
-            let req = try! doc1.change { $0.birds?.set(["chaffinch"])}
+            let res = try! doc1.change { $0.birds?.set(["chaffinch"])}
             XCTAssertEqual(doc1.content, Schema(birds: ["chaffinch"]))
-            XCTAssertEqual(req, Request(
+            XCTAssertEqual(res?.request, Request(
                             startOp: 1,
                             deps: [],
                             message: "",
-                            time: req!.time,
+                            time: res!.request.time,
                             actor: doc1.actor,
                             seq: 1,
                             ops: [
@@ -167,15 +167,15 @@ class DocumentTest: XCTestCase {
             var doc1 = try! Document(Schema(birds: nil), actor: actor)
             try! doc1.change { $0.birds?.set(["chaffinch"]) }
             var doc2 = doc1
-            let req = try! doc2.change { $0.birds?[0].set("greenfinch") }
+            let res = try! doc2.change { $0.birds?[0].set("greenfinch") }
             let birds = doc2.rootProxy().birds?.objectId
             XCTAssertEqual(doc1.content, Schema(birds: ["chaffinch"]))
             XCTAssertEqual(doc2.content, Schema(birds: ["greenfinch"]))
-            XCTAssertEqual(req, Request(
+            XCTAssertEqual(res?.request, Request(
                             startOp: 3,
                             deps: [],
                             message: "",
-                            time: req!.time,
+                            time: res!.request.time,
                             actor: doc1.actor,
                             seq: 2,
                             ops: [
@@ -191,17 +191,17 @@ class DocumentTest: XCTestCase {
             let actor = Actor()
             let doc1 = try! Document(Schema(birds: ["chaffinch", "goldfinch"]), actor: actor)
             var doc2 = doc1
-            let req = try! doc2.change {
+            let res = try! doc2.change {
                 $0.birds.remove(at: 0)
             }
             let birds = doc2.rootProxy().birds.objectId
             XCTAssertEqual(doc1.content, Schema(birds: ["chaffinch", "goldfinch"]))
             XCTAssertEqual(doc2.content, Schema(birds: ["goldfinch"]))
-            XCTAssertEqual(req, Request(
+            XCTAssertEqual(res?.request, Request(
                             startOp: 4,
                             deps: [],
                             message: "",
-                            time: req!.time,
+                            time: res!.request.time,
                             actor: doc2.actor,
                             seq: 2,
                             ops: [
@@ -216,13 +216,13 @@ class DocumentTest: XCTestCase {
             }
             let now = Date(timeIntervalSince1970: 126254)
             var doc1 = try! Document(Schema(now: nil))
-            let req = try! doc1.change { $0.now?.set(now) }
+            let res = try! doc1.change { $0.now?.set(now) }
             XCTAssertEqual(doc1.content, Schema(now: now))
-            XCTAssertEqual(req, Request(
+            XCTAssertEqual(res?.request, Request(
                             startOp: 1,
                             deps: [],
                             message: "",
-                            time: req!.time,
+                            time: res!.request.time,
                             actor: doc1.actor,
                             seq: 1,
                             ops: [
@@ -236,27 +236,27 @@ class DocumentTest: XCTestCase {
             var wrens: Counter?
         }
         var doc1 = try! Document(Schema())
-        let req1 = try! doc1.change { $0.wrens?.set(0) }
+        let res1 = try! doc1.change { $0.wrens?.set(0) }
         var doc2 = doc1
-        let req2 = try! doc2.change { $0.wrens?.increment() }
+        let res2 = try! doc2.change { $0.wrens?.increment() }
         let actor = doc2.actor
         XCTAssertEqual(doc1.content, Schema(wrens: 0))
         XCTAssertEqual(doc2.content, Schema(wrens: 1))
-        XCTAssertEqual(req1, Request(
+        XCTAssertEqual(res1?.request, Request(
                         startOp: 1,
                         deps: [],
                         message: "",
-                        time: req1!.time,
+                        time: res1!.request.time,
                         actor: actor,
                         seq: 1,
                         ops: [
                             Op(action: .set, obj: .root, key: "wrens", value: 0, datatype: .counter, pred: [])
                         ]))
-        XCTAssertEqual(req2, Request(
+        XCTAssertEqual(res2?.request, Request(
                         startOp: 2,
                         deps: [],
                         message: "",
-                        time: req2!.time,
+                        time: res2!.request.time,
                         actor: actor,
                         seq: 2,
                         ops: [
@@ -271,12 +271,12 @@ class DocumentTest: XCTestCase {
         }
 
         var doc1 = try! Document(Schema())
-        let req1 = try! doc1.change {
+        let res1 = try! doc1.change {
             $0.counts?.set([1])
             XCTAssertEqual($0.counts?.get(), [1])
         }
         var doc2 = doc1
-        let req2 = try! doc2.change {
+        let res2 = try! doc2.change {
             $0.counts?[0].increment(2)
             XCTAssertEqual($0.counts?.get(), [3])
         }
@@ -284,22 +284,22 @@ class DocumentTest: XCTestCase {
         let counts = doc2.rootProxy().counts?.objectId
         XCTAssertEqual(doc1.content, Schema(counts: [1]))
         XCTAssertEqual(doc2.content, Schema(counts: [3]))
-        XCTAssertEqual(req1, Request(
+        XCTAssertEqual(res1?.request, Request(
                         startOp: 1,
                         deps: [],
                         message: "",
-                        time: req1!.time,
+                        time: res1!.request.time,
                         actor: actor,
                         seq: 1,
                         ops: [
                             Op(action: .makeList, obj: .root, key: "counts", insert: false, pred: []),
                             Op(action: .set, obj: counts!, elemId: .head, insert: true, value: 1, datatype: .counter, pred: [])
                         ]))
-        XCTAssertEqual(req2, Request(
+        XCTAssertEqual(res2?.request, Request(
                         startOp: 3,
                         deps: [],
                         message: "",
-                        time: req2!.time,
+                        time: res2!.request.time,
                         actor: actor,
                         seq: 2,
                         ops: [
