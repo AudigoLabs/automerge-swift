@@ -48,3 +48,31 @@ public final class Patch: Codable {
     }
 
 }
+
+public extension Patch {
+
+    func debugGetChangedProperties() -> [String: String] {
+        var result = [String: String]()
+        getChangedPropertiesHelper(diffs.props, &result)
+        return result
+    }
+
+    private func getChangedPropertiesHelper(_ props: Props, _ result: inout [String: String], _ path: [String] = []) {
+        for (key, values) in props {
+            var newPath = path
+            newPath.append("\(key)")
+            for diff in values.values {
+                switch diff {
+                case .map(let mapDiff):
+                    getChangedPropertiesHelper(mapDiff.props, &result, newPath)
+                case .list(_):
+                    // TODO
+                    break
+                case .value(let valueDiff):
+                    result[newPath.joined(separator: ".")] = "\(valueDiff.value)"
+                }
+            }
+        }
+    }
+
+}
