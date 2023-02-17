@@ -307,6 +307,98 @@ class DocumentTest: XCTestCase {
                         ]))
     }
 
+    func testSyncWithQueuedChanges() {
+        struct Project: Codable {
+            let id: String
+        }
+        enum TransferDirection {
+            case from1To2
+            case from2To1
+        }
+
+        let doc1InitialData =  "hW9KgzGcc5YA3wkBIAacv2+730Z8nxEy3aA5DEMMQ01mt9JOb4ZH0Lye8H0xATnPaWzH+Uxv/q3nUgJv4NvSmtr84S0CaKdxjm0ChFzmCAECAwITDSMSNRJABEMEVgIMAQUCQx2aAyEDI2I0AUI2VmpfsQKAAQ6BAQKDAQUKAAoBfxACB34KCwIDfR0GAX2sppqfBgDTAAIAfgEDAgB/Hn8OSW5pdGlhbGl6YXRpb24JAH8ACQF/AAgBCgcACNUAAAAIfQECAwIEBQYCCQILfg8QBBECEgIXBhgGHwIgAiUDKQUtAi4CNAI3BDp+OzwEQX5CQwVEAkUCSAJLAk4CUQJXAlqNUs1uEzEQlkI229Lm0AMPwAMg7f/PGS45IA6tENexZ5ya2ruLPRvg7XF2KU20lHKwNB598/2MPVyDc9DtyVLH/gZG1P17o4db2k+dq6lz50A++JiUIsl+pTEeXP811DcHjXQ+MHXmgbd5K2RRZ6RSTEuRqHeqLRpMKU8q2eZZg0tEmlIKKBKpgNqM5BKBedXUSVZj0eSC8nKJKIVKZVOhrEWeE/yFQ6lGtQCUBZWsreC1dARMH8IJ6bZ29Fp+JAYEhlXEmg2ZiMkO/Za1pVu974BHR1eiZ+7tZzAjXXA/TMVSTuQiEwpkmaaNyMtmiSiSkiqQTY1IhTgaMlo+TGsMhi5/r3uHa3baxtSBMIRrOzK9og4jz+B4e/KUOzyPFBk6kJkHBuhWb06wdyHRJ6U88bgJssMOw8DGMznqYz5a2OHlMbaXYCg6HDM+Wphv58rXT39monpG7MuT2HMqL91j2XdMP/jRzQnVxoXATsy5/4Fb0beZay3A+1gacJp/XgyOPHWSYn+vrSW3+Q7O8n0AdfgH/9/lSzl+Ad0AAAYBfwkCAXsOeSl5TQIBfQXPAK1/AwF8IHxpAwIBe3wBxgB9QgUBfQIXbAIBegN5AQQBAwIBfQIGfQIBeHwBBQECAQIDAgF8fAEFEgIBf20CAQQDcnUBAgECAQIBAgEFAQIBXQQAfwEIAAIBfwADAX8AAgEDAAIBfwACAQIABgECAAIBfwAIAQIACQF/AAMBfQABAAMBBwAOAQQAf5YECAB5aZYEALYBdiQAAhQDAAKWBH0AAQICAHqWBGmWBIUBAYUBAgAClgR+AJYEAhR+AoUBA5YEAgADlgQCFAQ0fgABApYEfACFAQACApYEBwB2RoUBdoUBhgGFAXaFAWaFAQIUAjSdUT1KQ0EQfkoab+EFAju7b/anyg0kV9jZmSURo+G9SLAQvYC9B7DxDDaCna0HUBALG7FTrAwhr5ANPHCKhQ++/b75vjGBUu20ZGBAUnnIRjt0aKLV2nh0H493b6/K9NEOZLk/bk4OJS3Gp/P5VNrvajAovuVQewYxyqZgtOde3V6F66f77ftZ75R2XHtDYrBaz+eo2gyAsQ7YIaNlYDu0GLQXVuAsZ2QqFAEEIpNKOUrQknotdzZWL6P/1PBXqyDUCsXG5B2z1GRjQYiJa4sUMnhQIZcWZEhTjgkBPBn0vRY71eXX7u3Vxer9uTkvM2WfQ4yiV/3osGWjItN6Hsp2kDIkbzk5MkZif9MU27Y7bDqKzXRx1sF5I60cJ+lwO5nOZtJ0cBmb2WLSoXXC9+e9XxAAfwEVAH8BDAB/ASkAAwB93QBafQ=="
+        let doc1InitialSyncState = "QwErd+QjTKnLC3L6xiknJtriHuaOT5RpjYM2GOrDR86Jug=="
+        let doc2InitialData = "hW9KgwifsHEAgQUBIAacv2+730Z8nxEy3aA5DEMMQ01mt9JOb4ZH0Lye8H0xASt35CNMqcsLcvrGKScm2uIe5o5PlGmNgzYY6sNHzom6CAECAwITAyMHNRFAA0MCVgIKAQQCDhX0ASECIxc0AUIYVhtXmQGAAQICAAIBfhAHfqymmp8GAH4OSW5pdGlhbGl6YXRpb24AfgABfwACBwAIDwAACH8BBAYCCQILBBECEmkMYXJyYW5nZW1lbnRzEWF1ZGlvQ2xpcFNlZ21lbnRzC2F1ZGlvVHJhY2tzB2VmZmVjdHMCaWQHcHJvamVjdBF2aWRlb0NsaXBTZWdtZW50cwt2aWRlb1RyYWNrcyEzOWJjNDcyZWYxZDE1YjBmLWY5NDhkMWUzMDZjOTMyOGQKY3JlYXRlRGF0ZQJpZA1tdXNpY01ldGFkYXRhBXRpdGxlBXRlbXBvDXRpbWVTaWduYXR1cmULYm90dG9tVmFsdWUIdG9wVmFsdWUKY2xpY2tUcmFjawJpZAlwcm9qZWN0SWQEdHJpbQdlbmFibGVkBG11dGUXAAYBfwkCAX92AgF+BXwDAX4FAwIBfnwBFwQAfwEEAAIBfwACAX8AAgF/AAIBfwACAQQAf5YEBAB6aZYEALYBJAACFH8AApYEfQABAjM5YmM0NzJlZjFkMTViMGYtZDMyNzU3NTNhNjIyMzg1N+7Ku+XjMDM5YmM0NzJlZjFkMTViMGYtZDMyNzU3NTNhNjIyMzg1N05ldyBQcm9qZWN0+AAEBDM5YmM0NzJlZjFkMTViMGYtZjk0OGQxZTMwNmM5MzI4ZDM5YmM0NzJlZjFkMTViMGYtZDMyNzU3NTNhNjIyMzg1NxcAAQ=="
+        let doc2InitialSyncState = "QwA="
+
+        var doc1 = try! Document<Project>(data: [UInt8](Data(base64Encoded: doc1InitialData)!))
+        var doc2 = try! Document<Project>(data: [UInt8](Data(base64Encoded: doc2InitialData)!))
+        let syncState1 = SyncState(data: [UInt8](Data(base64Encoded: doc1InitialSyncState)!))
+        let syncState2 = SyncState(data: [UInt8](Data(base64Encoded: doc2InitialSyncState)!))
+
+        func transferSyncMessage(_ dir: TransferDirection) -> SyncMessage {
+            let data: [UInt8]
+            switch dir {
+            case .from1To2:
+                data = try! doc1.generateSyncMessage(syncState: syncState1)
+            case .from2To1:
+                data = try! doc2.generateSyncMessage(syncState: syncState2)
+            }
+            XCTAssertFalse(data.isEmpty)
+            switch dir {
+            case .from1To2:
+                try! doc2.receiveSyncMessage(syncState: syncState2, data: data)
+            case .from2To1:
+                try! doc1.receiveSyncMessage(syncState: syncState1, data: data)
+            }
+            return try! SyncMessage(bytes: data)
+        }
+
+        let msg1 = transferSyncMessage(.from1To2)
+        XCTAssertEqual(msg1.heads, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg1.have.count, 1)
+        XCTAssertEqual(msg1.have[0].lastSync, ["2b77e4234ca9cb0b72fac6292726dae21ee68e4f94698d833618eac347ce89ba"])
+        XCTAssertEqual(msg1.need, [])
+        XCTAssertEqual(msg1.changes, [])
+        XCTAssertEqual(try! doc2.getQueuedChanges(), [])
+
+        let msg2 = transferSyncMessage(.from2To1)
+        XCTAssertEqual(msg2.heads, ["2b77e4234ca9cb0b72fac6292726dae21ee68e4f94698d833618eac347ce89ba"])
+        XCTAssertEqual(msg2.have.count, 1)
+        XCTAssertEqual(msg2.have[0].lastSync, [])
+        XCTAssertEqual(msg2.need, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg2.changes, [])
+        XCTAssertEqual(try! doc1.getQueuedChanges(), [])
+
+        let msg3 = transferSyncMessage(.from1To2)
+        XCTAssertEqual(msg3.heads, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg3.have.count, 1)
+        XCTAssertEqual(msg2.have[0].lastSync, [])
+        XCTAssertEqual(msg3.need, [])
+        XCTAssertEqual(msg3.changes.map { try! Change(change: $0).seq }, [4, 5, 6, 7, 8, 9, 10])
+        let queuedChanges = try! doc2.getQueuedChanges()
+        XCTAssertEqual(queuedChanges.map { try! Change(change: $0).seq }, [4, 5, 6, 7, 8, 9, 10])
+
+        doc2 = try! Document(data: try! doc2.save())
+        try! doc2.setQueuedChanges(queuedChanges)
+        let msg4 = transferSyncMessage(.from2To1)
+        XCTAssertEqual(msg4.heads, ["2b77e4234ca9cb0b72fac6292726dae21ee68e4f94698d833618eac347ce89ba"])
+        XCTAssertEqual(msg4.have.count, 0)
+        XCTAssertEqual(msg4.need, ["e0a00f156f64743f0b3aa8cb81c01a16aeb656036fc489c62949abec55a008d9"])
+        XCTAssertEqual(msg4.changes, [])
+        XCTAssertEqual(try! doc1.getQueuedChanges(), [])
+
+        let msg5 = transferSyncMessage(.from1To2)
+        XCTAssertEqual(msg5.heads, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg5.have.count, 1)
+        XCTAssertEqual(msg5.have[0].lastSync, ["2b77e4234ca9cb0b72fac6292726dae21ee68e4f94698d833618eac347ce89ba"])
+        XCTAssertEqual(msg5.need, [])
+        XCTAssertEqual(msg5.changes.map { try! Change(change: $0).seq }, [3])
+        XCTAssertEqual(try! doc2.getQueuedChanges(), [])
+
+        let msg6 = transferSyncMessage(.from2To1)
+        XCTAssertEqual(msg6.heads, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg6.have.count, 1)
+        XCTAssertEqual(msg6.have[0].lastSync, ["39cf696cc7f94c6ffeade752026fe0dbd29adafce12d0268a7718e6d02845ce6"])
+        XCTAssertEqual(msg6.need, [])
+        XCTAssertEqual(msg6.changes, [])
+        XCTAssertTrue(try! doc1.getQueuedChanges().isEmpty)
+
+        // Should be in sync now
+        XCTAssertTrue(try! doc1.generateSyncMessage(syncState: syncState1).isEmpty)
+        XCTAssertTrue(try! doc2.generateSyncMessage(syncState: syncState2).isEmpty)
+    }
+
 
 //        // should use version and sequence number from the backend
 //        func testBackendConcurrency1() {

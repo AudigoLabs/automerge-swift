@@ -75,7 +75,7 @@ import Foundation
 ///
 /// - ``Document/allChanges()``
 /// - ``Document/getHeads()``
-/// - ``Document/getMissingsDeps()``
+/// - ``Document/getMissingDeps()``
 ///
 public struct Document<T: Codable> {
 
@@ -238,7 +238,7 @@ public struct Document<T: Codable> {
     }
     
     /// Returns the list of missing dependencies.
-    public func getMissingsDeps() throws -> [String] {
+    public func getMissingDeps() throws -> [String] {
         try backend.getMissingDeps()
     }
     
@@ -258,6 +258,7 @@ public struct Document<T: Codable> {
         try backend.generateSyncMessage(syncStatePointer: syncState.pointer)
     }
 
+    @discardableResult
     public mutating func receiveSyncMessage(syncState: SyncState, data: [UInt8]) throws -> Patch? {
         let patch = try writableBackend().receiveSyncMessage(syncStatePointer: syncState.pointer, data: data)
         if let patch = patch {
@@ -268,6 +269,14 @@ public struct Document<T: Codable> {
 
     public func encodeSyncState(syncState: SyncState) throws -> [UInt8] {
         try backend.encodeSyncState(syncStatePointer: syncState.pointer)
+    }
+
+    public func getQueuedChanges() throws -> [[UInt8]] {
+        try backend.getQueuedChanges()
+    }
+
+    public func setQueuedChanges(_ changes: [[UInt8]]) throws {
+        try backend.setQueuedChanges(changes)
     }
 
     /**

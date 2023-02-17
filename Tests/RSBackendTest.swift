@@ -24,7 +24,7 @@ final class RSBackendTest: XCTestCase {
 //        XCTAssertEqual(backend.save(), initialDocumentState)
 //    }
 
-    func testApplayLocal() {
+    func testApplyLocal() {
         let backend = RSBackend()
         let request = Request(
             startOp: 1,

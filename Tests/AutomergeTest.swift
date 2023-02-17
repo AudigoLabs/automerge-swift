@@ -1657,10 +1657,10 @@ class AutomergeTest: XCTestCase {
         })
         let changes = try! s2.allChanges()
         var s3 = try! Document<Scheme>(changes: [changes[1]])
-        XCTAssertEqual(try! s3.getMissingsDeps(), try! Change(change: changes[1]).deps)
+        XCTAssertEqual(try! s3.getMissingDeps(), try! Change(change: changes[1]).deps)
         try! s3.apply(changes: [changes[0]])
         XCTAssertEqual(s3.content, Scheme(birds: ["Chaffinch", "Bullfinch"]))
-        XCTAssertEqual(try! s3.getMissingsDeps(), [])
+        XCTAssertEqual(try! s3.getMissingDeps(), [])
     }
 
     // should report missing dependencies
@@ -1698,6 +1698,17 @@ class AutomergeTest: XCTestCase {
 
         let changes2 = try! s1.getChanges(between: s2)
         XCTAssertEqual(changes2.count, 0)
+    }
+
+    func testLoadSyncMessage() {
+        let bytes = [UInt8](Data(base64Encoded: "QgGuKiXKeEEwm6Kl1IWt1DtZBDcJLYjtRskZvP7DtdLu2gABAa4qJcp4QTCboqXUha3UO1kENwktiO1GyRm8/sO10u7aAAA=")!)
+        let syncMessage = try! SyncMessage(bytes: bytes)
+        XCTAssertEqual(syncMessage.heads, ["ae2a25ca7841309ba2a5d485add43b590437092d88ed46c919bcfec3b5d2eeda"])
+        XCTAssertEqual(syncMessage.need, [])
+        XCTAssertEqual(syncMessage.have.count, 1)
+        XCTAssertEqual(syncMessage.have[0].lastSync, ["ae2a25ca7841309ba2a5d485add43b590437092d88ed46c919bcfec3b5d2eeda"])
+        XCTAssertEqual(syncMessage.have[0].bloom, [])
+        XCTAssertEqual(syncMessage.changes, [])
     }
 
 }

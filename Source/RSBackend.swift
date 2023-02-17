@@ -53,6 +53,7 @@ public final class RSBackend {
             var container = try decoder.unkeyedContainer()
             return try Date(timeIntervalSince1970: container.decode(TimeInterval.self))
         })
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
     }
 
     public func save() throws -> [UInt8] {
@@ -87,16 +88,8 @@ public final class RSBackend {
     }
 
     public func getChanges(heads: [String] = []) throws -> [[UInt8]] {
-        var changes = [[UInt8]]()
         var headsBuffer = Array<UInt8>(hex: heads.joined())
-        var length = automerge_get_changes(automerge, UInt(heads.count), &headsBuffer)
-        guard length >= 0 else {
-            throw backendError
-        }
-        while length > 0 {
-            try changes.append(readBinary(mutableLength: &length))
-        }
-        return changes
+        return try callChangesFunction({ automerge_get_changes(automerge, UInt(heads.count), &headsBuffer) })
     }
 
     public func getMissingDeps() throws -> [String] {
@@ -132,6 +125,19 @@ public final class RSBackend {
         try callBinaryFunction({ automerge_encode_sync_state(automerge, syncStatePointer) }).data
     }
 
+    public func getQueuedChanges() throws -> [[UInt8]] {
+        return try callChangesFunction({ automerge_get_queued_changes(automerge) })
+    }
+
+    public func setQueuedChanges(_ changes: [[UInt8]]) throws {
+        for change in changes {
+            automerge_write_change(automerge, UInt(change.count), change)
+        }
+        guard automerge_set_queued_changes(automerge) == 0 else {
+            throw backendError
+        }
+    }
+
     func decodeSyncMessage(bytes: [UInt8]) throws -> SyncMessage {
         try callJSONFunction(resultType: SyncMessage.self) {
             automerge_decode_sync_message(automerge, bytes, UInt(bytes.count))
@@ -146,9 +152,9 @@ public final class RSBackend {
 
 }
 
-extension RSBackend {
+private extension RSBackend {
 
-    private func callJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T {
+    func callJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T {
         let length = api()
         guard length >= 0 else {
             throw backendError
@@ -156,7 +162,7 @@ extension RSBackend {
         return try readJSON(resultType, length: length)
     }
 
-    private func callOptionalJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T? {
+    func callOptionalJSONFunction<T: Decodable>(resultType: T.Type, _ api: () -> Int) throws -> T? {
         let length = api()
         guard length >= 0 else {
             throw backendError
@@ -167,7 +173,7 @@ extension RSBackend {
         return try readJSON(resultType, length: length)
     }
 
-    private func readJSON<T: Decodable>(_ type: T.Type, length: Int) throws -> T {
+    func readJSON<T: Decodable>(_ type: T.Type, length: Int) throws -> T {
         var buffer = Array<Int8>(repeating: 0, count: length)
         guard automerge_read_json(automerge, &buffer) == 0 else {
             throw backendError
@@ -180,9 +186,9 @@ extension RSBackend {
 
 }
 
-extension RSBackend {
+private extension RSBackend {
 
-    private func callBinaryFunction(_ api: () -> Int) throws -> (data: [UInt8], length: Int) {
+    func callBinaryFunction(_ api: () -> Int) throws -> (data: [UInt8], length: Int) {
         var length = api()
         guard length >= 0 else {
             throw backendError
@@ -194,7 +200,19 @@ extension RSBackend {
         return (data: data, length: length)
     }
 
-    private func readBinary(mutableLength: inout Int) throws -> [UInt8] {
+    func callChangesFunction(_ api: () -> Int) throws -> [[UInt8]] {
+        var length = api()
+        guard length >= 0 else {
+            throw backendError
+        }
+        var changes = [[UInt8]]()
+        while length > 0 {
+            try changes.append(readBinary(mutableLength: &length))
+        }
+        return changes
+    }
+
+    func readBinary(mutableLength: inout Int) throws -> [UInt8] {
         var data = Array<UInt8>(repeating: 0, count: mutableLength)
         mutableLength = automerge_read_binary(automerge, &data)
         guard mutableLength >= 0 else {
@@ -203,16 +221,16 @@ extension RSBackend {
         return data
     }
 
-    private func readBinary(length: Int) throws -> [UInt8] {
+    func readBinary(length: Int) throws -> [UInt8] {
         var length = length
         return try readBinary(mutableLength: &length)
     }
 
 }
 
-extension RSBackend {
+private extension RSBackend {
 
-    private var backendError: AutomergeError {
+    var backendError: AutomergeError {
         let errStr = automerge_error(automerge)
         if let errStr = errStr {
             let error = String(cString: errStr)
