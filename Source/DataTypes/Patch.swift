@@ -61,6 +61,10 @@ public extension Patch {
         for (key, values) in props {
             var newPath = path
             newPath.append("\(key)")
+            if values.isEmpty {
+                result[newPath.joined(separator: ".")] = "<deleted>"
+                continue
+            }
             for diff in values.values {
                 switch diff {
                 case .map(let mapDiff):

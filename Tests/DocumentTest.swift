@@ -399,6 +399,32 @@ class DocumentTest: XCTestCase {
         XCTAssertTrue(try! doc2.generateSyncMessage(syncState: syncState2).isEmpty)
     }
 
+    func testPatchChangedProperties() {
+        struct Schema: Codable, Equatable {
+            struct Price: Codable, Equatable {
+                var currency: String
+                var value: Int
+            }
+            var prices: [String: Price]
+        }
+        var doc = try! Document(Schema(prices: [:]), actor: Actor())
+        let patch1 = try! doc.change({ $0.prices["food"].set(Schema.Price(currency: "$", value: 1200)) })!.patch
+        XCTAssertEqual(patch1.debugGetChangedProperties(), [
+            "prices.food.currency": "string(\"$\")",
+            "prices.food.value": "int(1200)",
+        ])
+
+        let patch2 = try! doc.change({ $0.prices["food"].value.set(1500) })!.patch
+        XCTAssertEqual(patch2.debugGetChangedProperties(), [
+            "prices.food.value": "int(1500)",
+        ])
+
+        let patch3 = try! doc.change({ $0.prices.removeValue(forKey: "food") })!.patch
+        XCTAssertEqual(patch3.debugGetChangedProperties(), [
+            "prices.food": "<deleted>",
+        ])
+    }
+
 
 //        // should use version and sequence number from the backend
 //        func testBackendConcurrency1() {
